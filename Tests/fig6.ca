@@ -1,0 +1,34 @@
+# Superpose contour and color images
+
+# Color first
+color << THIS
+axes -2 2 -1 1
+file  stt45ff1.02
+mapping 2
+label (c) STT 1945 FF rms=1.02
+pallet 1
+table hsbff1
+outline 0
+line /home/sirisaac/parker/Core/Langel/Text/Fig3/world.ait
+interval -900  800 100
+read   82 162 1
+height   2.5
+width    5
+plot 1.2 1.5
+
+file  /home/sirisaac/cathy/Core/Survey/sttso45
+label (b) STT 1945 rms=1.02
+nobar
+interval -900  800 100
+read   82 162 1
+plot 0.0 2.9
+
+file  /home/sirisaac/cathy/Core/Survey/magref80
+label (a) STT 1980 rms=1.00
+nobar
+read   82 162 1
+plot .0 2.9
+stop
+THIS
+#Plot on screen
+show

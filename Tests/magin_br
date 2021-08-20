@@ -1,0 +1,20 @@
+ Predicts br on core at tesselation points in sttll
+file magref80_sh
+ coast
+ center 0 180
+outp magref80_br
+ interval -2500 2250 250
+site sttll
+ earth 3486 3486 3486
+field R
+scale -.001
+lmax 20
+list
+normalize S
+radius 0.5471496735
+ proj R
+ dimension 81
+ plot color
+ output tmp3
+continue
+quit

@@ -1,0 +1,13 @@
+eflux <<END
+tnew 1
+corefile test_model
+tessel deg10_ns
+pointer pdeg10
+bodydim 3
+epochs 1
+problem 1
+shrep 0 6371.2
+patches 1
+fiter 0
+cont
+END

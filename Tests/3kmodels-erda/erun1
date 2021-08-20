@@ -1,0 +1,11 @@
+tnew 0
+corefile deg5_ns_br
+tessel deg5_ns
+pointer pdeg5
+bodydim 3
+epochs 4
+problem 1
+shrep 0 6371.2
+patches 1
+fiter 0
+cont

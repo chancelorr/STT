@@ -1,0 +1,28 @@
+# makes list of corepoints with bounded regions output goes to tessel
+#
+newzoner <<THAT
+0 90 0 360
+10
+THAT
+
+mv tessel deg10_ns
+shtostt << THIS
+1              %choose model 1 is CALS3k.3
+deg10_ns        %tesselation and 2 bouded regions
+deg10_ns_br     %output file for core br model
+1000           % time increment
+THIS
+
+eflux <<END
+tnew 1
+corefile deg10_ns_br
+tessel deg10_ns
+pointer pdeg10
+bodydim 3
+epochs 1
+problem 1
+shrep 0 6371.2
+patches 1
+fiter 0
+cont
+END

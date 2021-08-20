@@ -1,0 +1,21 @@
+char .04
+xlim 6.5 -180 180
+ylim 3.25 -90 90
+note lldeg7.2
+plot 
+xlim 6.5 -180 180
+ylim 3.25 -90 90
+note
+note lldeg7.1
+plot 0.0 0.
+xlim 6.5 -180 180
+ylim 3.25 -90 90
+note
+note lldeg7.3
+plot 0.0 0.
+xlim 6.5 -180 180
+ylim 3.25 -90 90
+note
+note lldeg7.4
+plot 0.0 0.
+stop

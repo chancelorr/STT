@@ -1,0 +1,492 @@
+	subroutine invert(ig)
+c
+	implicit double precision (a-h,o-z)
+	parameter(nxyz=6500,nxyz2=2*nxyz,nxyz6=6*nxyz,nvert=10)
+	parameter (maxob=7000,maxp=30,lmax=101,maxe=200)
+	common /io/inp,iout,iprint
+	common /tessel/n,ntria,p(4,nxyz),iv(3,nxyz2),near(nvert,nxyz)
+	common /observ/ro(3,maxob,maxe),bro(maxob,maxe),sigma(maxob,
+     $                maxe), iflag(maxob,maxe),mobs,nobs(maxe),nepoch,
+     $                lobs(maxe)
+	common /calcul/bs(maxob,maxe),a(maxob,nxyz),bc(nxyz2),
+     $         reg(nxyz,nxyz)
+	common /rule/xyw(3,100),nquad
+      common /patchy/np(maxe),npts(maxp,maxe),isign(maxp,maxe),
+     $   ipts(maxp,maxe),
+     $   lpts(2*nxyz,maxe),ntris(nxyz),itris(nxyz+1),
+     $   ltris(2*(2*nxyz-4)),lptr(2*nxyz-4,2),
+     $   llpt(maxp,maxe),npatch,ipp(nxyz)
+      common/patchg/  fluxv(maxp,maxe),gradm(maxp,nxyz,maxe)
+	common /shr/glm(lmax,lmax),hlm(lmax,lmax),plm(lmax,lmax),
+     $        dlm(lmax,lmax)
+	common /circle/v(4,nxyz2),istack(nxyz2)
+	dimension ba(maxob),parm(maxe),rlam(10),at(nxyz,nxyz),bat(nxyz)
+	character*20 problem
+	external b2int
+	write(*,*)'npatch = ',npatch
+c	calculate model dimension
+	nn=nepoch*n
+	write(iout,*)'nepoch= ',nepoch, ' nn= ',nn
+c  clear out lower part of a
+	do 1 i=1,nxyz
+	do 1 j=1,nxyz
+1	at(i,j)=0.0
+c
+c  
+c  for new problem read data and make gram matrix, otherwise read
+c  grammatrix
+	if(ig.eq.0.or.ig.eq.1)then
+c  
+c  make vector of surface field, absent data are flagged by 99999.
+c
+  	  l=0
+	   do 222 i=1,nepoch
+	   lobs(i)=0.
+	   do 2 k=1,nobs(i)
+	      if(iflag(k,i).gt.0)then
+	          l=l+1
+		      lobs(i)=lobs(i)+1
+		      if(iflag(k,i).gt.1)then
+   	             ba(l)=bro(k,i)/sigma(k,i)
+			  else
+			     ba(l)=0.0
+			  endif
+	      endif
+3	     continue
+2	   continue
+	     l=l+1
+222	   continue
+	   write(iout,*)'A total of ',l-nepoch,' measurements were used'
+c
+c  is unregularized problem under or over-determined?
+c
+	resq1=0.0
+	kk=1
+	k2k=1
+	do 4 k=1,nepoch
+	if (lobs(k).lt.n)then
+c
+c  problem is underdetermined
+c
+	write(iout,*)'Epoch ',k,' LS problem is underdetermined'
+	   resq=0.0
+c
+c  copy a, and ba into lower part of arrays for later use
+c
+	  do 5 i=1,lobs(k)
+	  do 6 j=1,nn
+6 	   at(i+k2k-1,j)=a(i+k2k-1,j)
+ 	  bat(i+k2k-1)=ba(i+k2k-1)
+5	  continue
+	  do 65 j=1,n
+65	  at(lobs(k)+1,j)=1.0
+	  bat(lobs(k)+1)=0.
+	  kk=kk+lobs(k)+1
+	  k2k=k2k+lobs(k)+1
+	else
+c
+c  do least squares accummmulation phase for this overdetermined part
+c
+c  Move relevant part of a to upper corner
+c
+	write(iout,*)'Epoch ',k,' LS problem is overdetermined'
+	write(iout,*)'lobs= ',lobs(k), 'k2k= ',k2k,'kk= ',kk
+	  do 7 i=1,lobs(k)
+	    do 8 j=1,n
+8	    a(i,j) = a(kk+i-1,j+(k-1)*n)
+7	  ba(i)=ba(kk+i-1)
+c  Include no monopole constraint
+c	   do 85 j=1,n
+c85	   a(lobs(k)+1,j)=1.0
+	   ba(lobs(k)+1)=0.
+	   ll=lobs(k)+1
+	   call qr(maxob,ll,n,a,ba,bc,resq)
+	   if (resq.le.0)
+     $   write(iout,*)resq,' singular matrix in initial qr'
+	   write(iout,*)'Epoch ',k
+	   write(iout,*)'minimum possible rms misfit is ',
+     $       sqrt(resq/float(lobs(k)))
+	   call flush(iout)
+	   resq1=resq1+resq
+c  copy upper triangle of a, and ba into at and bat for later
+c  use
+	write(iout,*)' Copying upper triangle to at,bt'
+	call flush(iout)
+	  do 9 i=1,n
+	  do 10 j=i,n
+10 	  at(i+k2k-1,j+(k-1)*n)=a(i,j)
+	  bat(i+k2k-1)=ba(i)
+9	  continue
+	  kk=kk+lobs(k)+1
+	  k2k=k2k+n
+	endif
+4	continue
+c
+c  Write triangular form of a  and ba to disk
+c
+	open(unit=20,file='lsp',form='unformatted')
+	write(iout,*)' writing upper triangle of at,bt'
+	write(iout,*)'lobs(1),lobs(2)',lobs(1),lobs(2)
+	write(iout,*)'l, k2k, nn',l,k2k,nn
+	write(iout,*)'resq1',resq1
+	call flush(iout)
+	write(20)lobs(1),lobs(2),l,k2k,resq1
+	do 90 j=1,nn
+	write(20)(at(i,j),i=1,k2k-1)
+90	continue
+	write(20)(bat(j),j=1,k2k-1)
+	close(unit=20)
+	write(iout,*)'Upper triangular form of design matrix and data
+     $ written to disk'
+	call flush(iout)
+c
+c  otherwise read upper triangle of a and ba from lsp
+c  and save in at and bat
+c	
+	else if(ig.eq.-1.or.ig.eq.-2) then
+  	  open(unit=20,file='lsp',form='unformatted')
+	  read(20)lobs(1),lobs(2),l,k2k,resq1
+	  do 91 j=1,nn
+	  read(20)(at(i,j),i=1,k2k-1)
+91	  continue
+	  read(20)(bat(j),j=1,k2k-1)
+	  close(unit=20)
+	  write(*,*)l-nepoch,' measurements',k2k-1,' rows in at ',
+     $      resq1,' = total misfit'
+	endif
+c
+c  Decide what problem to solve
+c 
+	call getchr('invtype',problem,nfound)
+c
+c*********************************************************************
+c  Start with single epoch case
+c
+	if(nepoch.eq.1)then
+c  choose regularization type and solve
+	if(problem(1:7).eq.'minbrsq')then
+	   nf=2
+	else if(problem(1:7).eq.'mingrad')then
+	   nf=4
+	else
+	  write(iout,*)'Unknown regularization type, min brsq used'
+	  nf=2
+	endif
+	call regul(nf)
+	call getval('lambda',rlam,1,nfound)
+	nlam=nfound
+	write(iout,*)'rlam1 = ',rlam(1)
+	rlam1=rlam(1)*float(l)
+c  Construct new a matrix for solution by qr
+	  if(nf.eq.4)then
+             nnn=n-1
+	  else
+	     nnn=nn
+	  endif
+	  do 11 i=1,nnn
+	    ba(i)=0.
+	     do 12 j=1,n
+12	     a(i,j)=reg(i,j)*sqrt(rlam1)
+11	  continue
+	  do 111 i=1,n
+	    ba(nnn+i)=bat(i)
+	  do 112 j=1,n
+112	     a(nnn+i,j)=at(i,j)
+	if(lobs(1).gt.n)then
+	  do 113 j=1,i-1
+113	   a(nnn+i,j)=0.
+	endif
+111	  continue
+c  solve this regularized problem
+c
+	ll=nnn+k2k-1
+	write(iout,*)'ll= ',ll,' nn= ',nn
+	call qr(maxob,ll,nn,a,ba,bc,resqr)
+	if (resqr.le.0)write(iout,*)resqr, ' singular matrix in regul qr'
+	write(iout,*)'qr rms misfit =', sqrt(resqr/float(l))
+	call flush(iout)
+c
+c  compute integrated regularization parameter 
+c
+	p1=0.0
+	do 14 i=1,nnn
+	 ba(i)=0.
+	 do 15 j=1,n
+	  ba(i)=ba(i) + reg(i,j)*bc(j)
+15	 continue
+14	continue
+	parm(1)=0.
+	do 16 j=1,nnn
+	parm(1)=parm(1)+ ba(j)*ba(j)
+16	continue
+	p1=p1+parm(1)
+	if(nf.eq.2)then
+	write(iout,*)'integrated br**2 over core is ',parm(1)
+	   write(iout,*)'regularized model rms misfit =',
+     $      sqrt((resqr-rlam1*p1+resq1)/float(l))
+	else if(nf.eq.4)then
+	write(iout,*)'integrated (grad br)**2 over core is ',parm(1)
+	   write(iout,*)'regularized model rms misfit =',
+     $      sqrt((resqr-rlam1*p1+resq1)/float(l))
+	endif
+17	continue
+	else if(nepoch.eq.2)then
+c
+c********************************************************************
+c  Now have two epochs
+c
+c
+	if(problem(1:7).eq.'minbrsq'.or.problem(1:7).eq.'mingrad')then
+	if(problem(1:7).eq.'minbrsq')then
+	   nf=2
+	   nnn=n
+	else if(problem(1:7).eq.'mingrad')then
+	   nf=4
+	   nnn=n-1
+	endif
+	call regul(nf)
+	write(iout,*)'Return from regul'
+	call flush(iout)
+	call getval('lambda',rlam,2,nfound)
+	nlam=nfound
+	write(iout,*)'rlam1 = ',rlam(1)
+	rlam1=rlam(1)*float(l)
+	write(iout,*)'rlam2 = ',rlam(2)
+	rlam2=rlam(2)*float(lobs(2))/float(lobs(1))
+c  expand regularization matrix to handle two epochs
+	do 20 i=1,nnn
+	do 22 j=1,n
+	  reg(i,j+n)=0.0
+	  reg(i+nnn,j)=0.0
+	  reg(i+nnn,j+n) = reg(i,j)
+22	continue
+20	continue
+c  Construct new a matrix for solution by qr
+	  do 23 i=1,nn
+	    ba(2*nnn+i)=bat(i)
+	     do 24 j=1,nn
+24	     a(2*nnn+i,j)=at(i,j)
+23	  continue
+	  do 25 i=1,2*nnn
+	   ba(i)=0.
+	   do 25 j=1,nn
+	   a(i,j)=reg(i,j)*sqrt(rlam1)
+25	  continue
+c
+c
+c Allow for individual epoch satisfaction of misfit criteria
+	kk=k2k-n-1
+	write(iout,*)'First ', kk,' data weighted by sqrt(rlam2)'
+	do 26 i=1,kk
+	  ba(2*nnn+i)=sqrt(rlam2)*ba(2*nnn+i)
+	do 26 j=1,nn
+	  a(2*nnn+i,j)=sqrt(rlam2)*a(2*nnn+i,j)
+26	continue
+	ll=2*nnn+k2k-1
+c  
+c  solve this regularized problem
+c
+	write(iout,*)'ll= ',ll
+	call qr(maxob,ll,nn,a,ba,bc,resqr)
+	if (resqr.le.0)write(iout,*) resqr, ' singular matrix in regul qr'
+	write(iout,*)'qr rms misfit =', sqrt(resqr/float(l))
+c
+c  compute integrated regularization parameter for each epoch
+c
+	p1=0.0
+	do 27 k=1,nepoch
+	do 28 i=1,nnn
+	 ba(i+(k-1)*n)=0.
+	 do 29 j=1,n
+	  ba(i+(k-1)*n)=ba(i+(k-1)*n) + reg(i,j)*bc(j+(k-1)*n)
+29	 continue
+28	continue
+	parm(k)=0.
+	do 30 j=1,nnn
+	parm(k)=parm(k)+ ba(j+(k-1)*n)*ba(j+(k-1)*n)
+30	continue
+	p1=p1+parm(k)
+	write(iout,*)'Epoch ',k
+	if(nf.eq.2)then
+	  write(iout,*)'integrated br**2 over core is ',parm(k)
+	else if(nf.eq.4)then
+	  write(iout,*)'integrated (grad br)**2 over core is ',parm(k)
+	endif
+27	continue
+	   write(iout,*)'regularized model rms misfit =',
+     $      sqrt((resqr-rlam1*p1+resq1)/float(l))
+32	continue
+	diff=0.
+	do 325 j=1,nnn
+325	diff =diff + (ba(j)-ba(j+n))**2
+	write(iout,*)'Integrated squared difference in models is',diff	
+c
+	endif
+	endif
+	return 
+	end
+c
+c_______________________________________________________________________
+	subroutine regul(nf)
+	implicit double precision (a-h,o-z)
+c  finds the matrix reg(n,n) to do integration of (Br)**2 or 
+c  (grad Br)**2 over the surface of the core
+c  so that br.reg.br yields the integral
+c  then cholesky factor of reg is computed for regularized solution by
+c  QR in invert.
+c  Polyhedral core is used to enable closed form of integral
+c  nf is type of regularization
+c  nf=2 for br, nf=4 for grad br.
+	parameter(nxyz=6500,nxyz2=2*nxyz,nxyz6=6*nxyz,nvert=10)
+	parameter (maxob=7000,maxp=30,lmax=101,maxe=200)
+	common /io/inp,iout,iprint
+	common /tessel/n,ntria,p(4,nxyz),iv(3,nxyz2),near(nvert,nxyz)
+	common /calcul/bs(maxob,maxe),a(maxob,nxyz),bc(nxyz2),
+     $         reg(nxyz,nxyz)
+	common /rule/xyw(3,100),nquad
+c
+c  Initialize matrix to zero
+c
+	do 1 i=1,n
+	do 1 j=1,n
+1	reg(i,j)=0.
+	area=0.
+	areas=0.
+c
+c  Add contribution to matrix from each triangle
+c
+	do 100 j=1,ntria
+c
+c  Vertices of current triangle are points iv1,iv2,iv3
+c
+	iv1=iv(1,j)
+	iv2=iv(2,j)
+	iv3=iv(3,j)
+c
+c  find area of current triangle
+c
+	delta=p3area(p(1,iv1),p(1,iv2),p(1,iv3))
+	sdelta=sarea(p(1,iv1),p(1,iv2),p(1,iv3))
+	area=area +delta
+	areas=areas+sdelta
+c
+c  for br regularization, construct a symmetric +ve definite matrix
+c
+	if (nf.eq.2)then
+	  const=delta/6.
+	  reg(iv1,iv1)=const + reg(iv1,iv1)
+	  reg(iv2,iv2)=const + reg(iv2,iv2)
+	  reg(iv3,iv3)=const + reg(iv3,iv3)
+	  reg(iv1,iv2)=const/2. + reg(iv1,iv2)
+	  reg(iv1,iv3)=const/2. + reg(iv1,iv3)
+	  reg(iv2,iv3)=const/2. + reg(iv2,iv3)
+	  reg(iv2,iv1)=const/2. + reg(iv2,iv1)
+	  reg(iv3,iv1)=const/2. + reg(iv3,iv1)
+	  reg(iv3,iv2)=const/2. + reg(iv3,iv2)
+c
+c
+c  otherwise for grad br regularization, get a symmetric, semi+ve def
+c
+	else if (nf.eq.4)then
+	  s12=2*(1-dotty(p(1,iv2),p(1,iv3)))
+	  s22=2*(1-dotty(p(1,iv1),p(1,iv3)))
+	  s32=2*(1-dotty(p(1,iv2),p(1,iv1)))
+	  const=4.*sdelta
+	  reg(iv1,iv1)=s12/const + reg(iv1,iv1)
+	  reg(iv2,iv2)=s22/const + reg(iv2,iv2)
+	  reg(iv3,iv3)=s32/const + reg(iv3,iv3)
+	  reg(iv1,iv2)=(s32-s12-s22)/(2.*const) + reg(iv1,iv2)
+	  reg(iv1,iv3)=(s22-s12-s32)/(2.*const) + reg(iv1,iv3)
+	  reg(iv2,iv3)=(s12-s22-s32)/(2.*const) + reg(iv2,iv3)
+	  reg(iv2,iv1)=(s32-s12-s22)/(2.*const) + reg(iv2,iv1)
+	  reg(iv3,iv1)=(s22-s12-s32)/(2.*const) + reg(iv3,iv1)
+	  reg(iv3,iv2)=(s12-s22-s32)/(2.*const) + reg(iv3,iv2)
+c
+c use eigenvalue decomposition to find square root of reg
+c
+	endif
+100	continue
+	if(nf.eq.2) then
+c  Find Cholesky decomposition of reg so can solve by QR
+c  Upper triangular form returned
+	  call cholsk(n,reg,nxyz,ifbad)
+	else if(nf.eq.4) then
+	  call ql(nxyz,n,reg,bc,a,ierr)
+	  if(ierr.ne.0)then
+	   write(iout,*) 'Trouble in eigenvalue decomposition of reg'
+	  endif
+c  compute sqrt(lambda)Ts(l), discard two zero eigenvalues and vectors
+	  do 10 i=1,n
+	  do 11 j=1,n
+11	  a(i,j)=reg(j,i)
+10	  continue
+	  do 12 i=1,n-1
+	  do 13 j=1,n
+13	  reg(i,j)=a(i+1,j)
+	  reg(i,i)=sqrt(bc(i+1))*reg(i,i)
+12	  continue
+	endif
+	write(iout,*)' area of regularization polyhedron = ',area
+	write(iout,*)' area of regularization sphere = ',areas
+	return
+	end
+C
+C
+C
+      SUBROUTINE CHOLSK(N,A,LDA,IFBAD)
+	implicit double precision (a-h,o-z)
+C     COURTESY BOB PARKER
+C     CALLS NO OTHER ROUTINES
+C     FACTORIZATION OF POSITIVE DEFINITIVE SYMMETRIC MATRICES
+C     EXPLANATION        
+C     CHOLSK CALCULATES THE FACTOR L IN THE CHOLESKY FACTORIZATION
+C     A=L L-TRANS. THE ORIGINAL ARRAY IS OVERWRITTEN.
+C     ARGUMENTS
+C     A AN ARRAY DIMENSION LDA,LDA
+C     ON ENTRY THE INPUT MATRIX SHOULD OCCUPY THE 1ST N COLS, OR IF
+C     DESIRED, JUST THE LOWER LEFT TRIANGLE.  ON EXIT THE ORIGINAL
+C     ARRAY IS REPLACED WITH L THE LEFT CHOLESKY FACTOR, IN THE UPPER HALF.
+C     N THE ORDER OF THE MATRIX
+C     IFBAD ERROR FLAG, SET TO 1 IF MATRIX NOT POSITIVE DEFINITE. SET TO
+C     0 IF OK.
+      DIMENSION A(LDA,LDA)
+C
+      IFBAD=0
+      DO 1500 I=1,N
+      I1=I+1
+      DO 1400 J=I,N
+      J1=J+1
+      X=A(J,I)
+      IF(I.EQ.1)GOTO 1200
+      DO 1100 KBACK=2,I
+      K=I-KBACK+1
+1100  X=X-A(K,J1)*A(K,I1)
+1200  IF(I.NE.J)GOTO 1300
+      IF(X.LE.0.0)GOTO 4000
+      Y=1.0/SQRT(X)
+      A(I,I1)=Y
+      GOTO 1400
+1300  A(I,J1)=X*Y
+1400  CONTINUE
+1500  CONTINUE
+C
+      DO 1600 I=1,N
+1600  A(I,I+1)=1.0/A(I,I+1)
+C
+C     COPY L INTO LOWER HALF OF MATRIX AND ZERO UPPER HALF.
+      DO 2100 I=1,N
+      DO 2100 J=1,I
+      A(I,J)=A(J,I+1)
+2100  A(J,I+1)=0.0  
+C     take transpose to yield upper triangular form   
+      DO 220 I=1,N
+      DO 220 J=1,I
+      A(J,I)=A(I,J)
+220   IF(I.NE.J)A(I,J)=0.D0
+      RETURN
+C
+C     nonpositive matrix encountered
+4000  ifbad=1
+	write(iout,*)'non-positive matrix encountered in Cholsk'
+      return
+      end 

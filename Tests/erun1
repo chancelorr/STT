@@ -1,0 +1,22 @@
+tnew 1
+corefile test_model
+tessel /Users/cathy/Projects/STT/Tesselations/deg10
+pointer /Users/cathy/Projects/STT/Tesselations/pdeg10
+bodydim 4
+ obsdim 6
+epochs 1
+ e1file /Users/cathy/Projects/STT/Data/surv45
+ e1file /Users/cathy/Projects/STT/Data/tt
+ e1format ()
+ design 1
+problem 0
+ lambda .5e-12 1.0 10.0
+shrep 10 6371.2
+patches 1
+fiter 0
+cont
+R
+0 0
+82 162
+test80
+0

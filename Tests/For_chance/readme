@@ -1,0 +1,47 @@
+This directory contains special version of tesselation code and other things for calculating flux through various patches on CMB for snapshots of field models
+
+General strategy is
+
+(0) Use cczoner to produce core points for tesselation and partition them into 2 regions, with flag of 1,-1 according to
+whether inside or outside bounding box. Input is specified in zonin. 
+>> newzoner <zonin  Default for output is  the file tessel.
+(1) Convert unit vectors in tesselation to lat, long, core radius; 
+(2) Feed to field evaluator along with snapshot sh model to evaluate br on cmb, with region definiton
+this is done by 
+>> shtostt <shtostt_run
+
+STOP here
+
+
+
+(3) Feed to eflux to calculate flux or whatever through specified regions on CMB or (r=a?)
+
+(2b) visualize the triangulation
+
+(4) repeat (2)-(3) for all epochs and add output to summary file
+
+What size tesselation? Use pdeg5 for CALS3k.3
+
+
+peregrinus% head test_model   formta is x,y,z, br, 1
+  0.  0.    1.00000    33659.9  1
+   0.182996    1.61997E-02   0.982980    42933.8  1
+    7.74980E-02   0.166596   0.982975   -192938.  1
+  -0.105498   0.150397   0.982981   -437045.  1
+  -0.182996   -1.61997E-02   0.982980   -94685.3  1
+   -7.74980E-02  -0.166596   0.982975    75475.1  1
+   0.105498  -0.150397   0.982981    108657.  1
+   0.355595    6.33991E-02   0.932487  -104814.2  1
+   0.276293   0.232695   0.932478   -45425.0  1
+   0.122897   0.339690   0.932474   -319668.  1
+
+
+___________________________________________________________________
+        program look
+c
+c  Looks at triangulations in various projections with aid of plotxy
+c  Triangles are read as groups of three vectors, output from synops
+c  will do. 
+c  Centroids of triangles are written to a separate file.
+c
+___________________________________________________________________
