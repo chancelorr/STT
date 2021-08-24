@@ -1,0 +1,107 @@
+PROGRAM ZONER
+	IMPLICIT NONE
+!*--ZONER4
+!*** Start of declarations inserted by SPAG
+	REAL along , BCOlat1 , BCOlat2 , BLOng1 , BLOng2 , colat , cp ,   &
+		   & ct , deg , delta , p , phi , sp , st , step , theta , x
+	INTEGER i , IBOX , iflag , j , jmax , kount , nu
+!*** End of declarations inserted by SPAG
+!  Starting afresh Aug 2021,  C. Roberts
+!
+!
+!	
+!  Generates approximately equally spaced unit vectors on a sphere with
+!  user-specified separation DELTA.  Start with north pole, then increment colat by delta and go around
+!  latitude bands - , end with SP.
+!
+!
+!  Divide vectors into two regions specified by  a colat, long bounding box
+!  e.g. 0,90, -180, 180 gives N. hemisphere, flag 1, then SH will have flag -1, boundary will be 0
+!  0, 180, -90, 90 gives "front" of Earth
+		DIMENSION x(3) , p(3,6)
+		DATA deg/0.01745329/
+! specify north and south poles and 4 equidistant equatorial spots  as first 6 points
+		DATA ((p(i,j),i=1,3),j=1,6)/0 , 0 , 1 , 0 , 0 , -1 , -1 , -1 , 0 ,&
+			& 1 , -1 , 0 , 1 , 1 , 0 , -1 , 1 , 0/
+		COMMON /BOXY  / BCOlat1 , BCOlat2 , BLOng1 , BLOng2
+! Enter bounding box, colat1,2 ,long1,2
+		PRINT * , 'Enter colat1,2 and long1,2 for bounding box'
+		READ * , BCOlat1 , BCOlat2 , BLOng1 , BLOng2
+		PRINT * , BCOlat1 , BCOlat2 , BLOng1 , BLOng2
+! is  north pole in box?
+		IF ( BCOlat1.EQ.0.0 ) iflag = 1
+		kount = 0
+		OPEN (UNIT=3,FILE='tessel')
+		DO j = 1 , 1
+			WRITE (3,*) (p(i,j),i=1,3) , iflag
+		ENDDO
+		kount = 2
+		PRINT * , ' Enter DELTA in degrees'
+		READ * , delta
+		PRINT * ,' assigning vertices for a tesselation with ', &
+		& 'angular distance', delta
+!      nu=90.0/delta -0.5
+!      delta=180.0/(2.0*nu + 1.0)
+!      print '(a,f9.3)',' DELTA modified to be ',delta
+		nu = 179/delta
+!	print *, 'nu= ',nu
+		DO i = 1 , nu
+		   colat = i*delta
+		   theta = deg*colat
+		   ct = COS(theta)
+		   st = SIN(theta)
+		   step = 360.0/INT(st*360.0/delta)
+		   jmax = 360/step
+!	print *, 'jmax= ',jmax
+		   DO j = 1 , jmax
+			  along = (j-1)*step
+			  phi = deg*(along+0.4771*colat)
+! uncomment  next line to align all trainsgle on zero longitude
+!	  phi = deg*along
+			  cp = COS(phi)
+			  sp = SIN(phi)
+			  x(1) = cp*st
+			  x(2) = sp*st
+			  x(3) = ct
+			  iflag = IBOX(colat,along)
+			  WRITE (3,*) x , iflag
+			  kount = 1 + kount
+		   ENDDO
+		ENDDO
+! is pole in box?
+		IF ( BCOlat2.EQ.180.0 ) iflag = 1
+		DO j = 2 , 2
+		   WRITE (3,*) (p(i,j),i=1,3) , iflag
+		ENDDO
+		PRINT * , kount , 'vectors written to tessel'
+		END
+!*==IBOX.spg  processed by SPAG 6.72Dc at 00:33 on 24 Aug 2021
+!_________________________________________________
+!
+		INTEGER FUNCTION IBOX(Colat,Along)
+		IMPLICIT NONE
+!*--IBOX85
+!*** Start of declarations inserted by SPAG
+		REAL Along , BCOlat1 , BCOlat2 , BLOng1 , BLOng2 , Colat
+		INTEGER inlat , inlong
+!*** End of declarations inserted by SPAG
+! Check if colat,along is inside, outside or on boundary of box specified in boxy
+! Box in degrees  (0,180,0,360)
+		COMMON /BOXY  / BCOlat1 , BCOlat2 , BLOng1 , BLOng2
+!
+		IF ( Colat.GE.BCOlat1 .AND. Colat.LE.BCOlat2 ) THEN
+		   inlat = 1
+		ELSE
+		   inlat = -1
+		ENDIF
+		IF ( Along.GE.BLOng1 .AND. Along.LE.BLOng2 ) THEN
+		   inlong = 1
+		ELSE
+		   inlong = -1
+		ENDIF
+		IF ( inlat.EQ.1 .AND. inlong.EQ.1 ) THEN
+		   IBOX = 1
+		ELSE
+		   IBOX = -1
+		ENDIF
+		END
