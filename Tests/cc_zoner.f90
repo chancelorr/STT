@@ -2,9 +2,10 @@ PROGRAM ZONER
     IMPLICIT NONE
 !*--ZONER4
 !*** Start of declarations inserted by SPAG
-    REAL along , BCOlat1 , BCOlat2 , BLOng1 , BLOng2 , colat , cp ,   &
-		   & ct , deg , delta , p , phi , sp , st , step , theta , x
-    INTEGER i , IBOX , iflag , j , jmax , kount , nu
+    REAL  :: along , BCOlat1 , BCOlat2 , BLOng1 , BLOng2 , colat , cp ,   &
+		   & ct , deg , delta , phi , sp , st , step , theta, x(3), p(3, 6), &
+		   & coord(2), q(2, 2), r
+    INTEGER :: i , IBOX , iflag , j , jmax , kount , nu, lkount
 !*** End of declarations inserted by SPAG
 !  Starting afresh Aug 2021,  C. Roberts
 !
@@ -18,24 +19,36 @@ PROGRAM ZONER
 !  Divide vectors into two regions specified by  a colat, long bounding box
 !  e.g. 0,90, -180, 180 gives N. hemisphere, flag 1, then SH will have flag -1, boundary will be 0
 !  0, 180, -90, 90 gives "front" of Earth
-        DIMENSION x(3) , p(3,6)
+!
+!  Write only the vectors within the bounding box to the
+!
+!
         DATA deg/0.01745329/
+		DATA r/3486.0E3/
 ! specify north and south poles and 4 equidistant equatorial spots  as first 6 points
         DATA ((p(i,j),i=1,3),j=1,6)/0 , 0 , 1 , 0 , 0 , -1 , -1 , -1 , 0 ,&
 			& 1 , -1 , 0 , 1 , 1 , 0 , -1 , 1 , 0/
+		DATA ((q(i, j), i=1, 2), j=1, 2)/90.0, 0.0, -90.0, 0.0/
         COMMON /BOXY  / BCOlat1 , BCOlat2 , BLOng1 , BLOng2
 ! Enter bounding box, colat1,2 ,long1,2
         PRINT * , 'Enter colat1,2 and long1,2 for bounding box'
         READ * , BCOlat1 , BCOlat2 , BLOng1 , BLOng2
         PRINT * , BCOlat1 , BCOlat2 , BLOng1 , BLOng2
-! is  north pole in box?
-        IF ( BCOlat1.EQ.0.0 ) iflag = 1
+! Open files for writing
+		OPEN (UNIT=3,FILE='tessel')
+		OPEN (UNIT=30, FILE='llTessel')	
+! is  north pole in box? If not, value still needs to be fixed or it will take on random default value
+        IF ( BCOlat1.EQ.0.0 ) THEN
+			iflag = 1
+			WRITE (30, *) r, (q(i, 1), i=1, 2)
+		ELSE
+			iflag = -1
+		ENDIF
         kount = 0
-        OPEN (UNIT=3,FILE='tessel')
         DO j = 1 , 1
             WRITE (3,*) (p(i,j),i=1,3) , iflag
         ENDDO
-        kount = 2
+        kount = 1
         PRINT * , ' Enter DELTA in degrees'
         READ * , delta
         PRINT * ,' assigning vertices for a tesselation with ', &
@@ -44,6 +57,7 @@ PROGRAM ZONER
 !      delta=180.0/(2.0*nu + 1.0)
 !      print '(a,f9.3)',' DELTA modified to be ',delta
         nu = 179/delta
+!	These are all unit vectors, so we are effectively taking r=1
 !	print *, 'nu= ',nu
         DO i = 1 , nu
 		    colat = i*delta
@@ -54,27 +68,41 @@ PROGRAM ZONER
 			jmax = 360/step
 !	print *, 'jmax= ',jmax
 			DO j = 1 , jmax
-				along = (j-1)*step
+			  along = (j-1)*step
 			  phi = deg*(along+0.4771*colat)
-! uncomment  next line to align all trainsgle on zero longitude
-!	  phi = deg*along
+!	uncomment  next line to align all trainsgle on zero longitude
+!	phi = deg*along
 			  cp = COS(phi)
 			  sp = SIN(phi)
-			  x(1) = cp*st
-			  x(2) = sp*st
+			  x(1) = st*cp
+			  x(2) = st*sp
 			  x(3) = ct
 			  iflag = IBOX(colat,along)
 			  WRITE (3,*) x , iflag
+			  IF (iflag.eq.1) THEN
+				coord(1) = 90 - colat
+				coord(2) = 180 - (along + 0.4771*colat)
+				WRITE (30, *) r, coord
+				lkount = lkount + 1
+			  ENDIF
 			  kount = 1 + kount
-		   ENDDO
+		    ENDDO
 		ENDDO
-! is pole in box?
-		IF ( BCOlat2.EQ.180.0 ) iflag = 1
+! is south pole in box?
+		IF ( BCOlat2.EQ.180.0 ) THEN
+			iflag = 1
+			WRITE (30, *) r, (q(i, 2), i=1, 2)
+			lkount = lkount + 1
+		ELSE
+			iflag=-1
+		ENDIF
 		DO j = 2 , 2
 		   WRITE (3,*) (p(i,j),i=1,3) , iflag
 		ENDDO
+		kount = kount + 1
 		PRINT * , kount , 'vectors written to tessel'
-		END
+		PRINT * , lkount , 'vectors written to llTessel'
+END PROGRAM 
 !*==IBOX.spg  processed by SPAG 6.72Dc at 00:33 on 24 Aug 2021
 !_________________________________________________
 !
@@ -105,3 +133,6 @@ PROGRAM ZONER
 		   IBOX = -1
 		ENDIF
 		END
+!
+!
+! __________________________________________________________________________
