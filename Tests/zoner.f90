@@ -76,8 +76,10 @@ nu = 360/delta
 
 print *, 'mu is ', mu
 print *, 'nu is ', nu
-! We can loop mu from 0 since we go from pole to pole
 ! nu must be looped from 1, otherwise 0 and 360 will be same point
+! LongIn should just be named long. In is for input but this is not an input
+! Every other latitudinal line should be shifted by delta/2 to make triangles
+! Shift every even j-indexed longIn by delta/2
 do i=1, (mu-1)
     colat = i*delta
     theta = toRad * colat
@@ -85,6 +87,7 @@ do i=1, (mu-1)
     st = sin(theta)
     do j=1, nu
         longIn = j*delta
+        if (mod(i, 2).eq.1) longIn = longIn + delta/2
         phi = toRad * longIn
         cp = cos(phi)
         sp = sin(phi)

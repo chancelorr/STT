@@ -1,5 +1,7 @@
-!*==INTERV.spg  processed by SPAG 6.72Dc at 07:24 on 30 Aug 2021
-!   by Chance, adapted from C. Constable
+program shtostt
+implicit none
+
+!   by C. Constable, translated and edited by Chances
 !  	reads snaphsot sh field in form of 1,m,glm,hlm and tesselation ifn form of x,y,z, ipp
 !  	evlautes br on CMB and outputs to corefile for digestion by eflux
  
@@ -60,16 +62,196 @@
  
 !                 coords   - performs transformation between geodetic and
 !                            geocentric coords
- 
+  
+        integer lmax,nspl,n,np,nl,jord,nsplt,ipp,nxyz,npts,itinc
+        real*8 pt
+        real*8 gt,spl,tknts,g,gd,p,dp,dx,dy,dz,fac
+        real*8 dg,dgt,ex,ey,ez,eh,ef,ed,ei
+        real*8 alat,alon,alt,time,theta,phi,rad,sinth,costh,sd,cd
+        real*8 br,x,y,z,h,f,ainc,d,tstartin,tendin
+        real*8 stime,etime, tinc
+        character*30 outfile,modfile,tessel
+  
+      parameter (nxyz = 50000)
+        parameter (lmax=30)
+! need to update next line and everywhere for time varying form
+        parameter (nsplt=402)
+  
+        parameter (n=lmax*(lmax+2))
+        parameter (np=n*nsplt)
+        parameter (nl=(lmax+1)*(lmax+2)/2)
+  
+        dimension gt(n,nsplt),dgt(n,nsplt)
+        dimension spl(nsplt),tknts(nsplt+4)
+        
+        dimension g(n),gd(n),dg(n)
+        
+      dimension pt(4,nxyz), alat(nxyz), alon(nxyz),ipp(nxyz)
+        dimension p(nl),dp(nl)
+        dimension dx(lmax*(lmax+2)),dy(lmax*(lmax+2)),dz(lmax*(lmax+2))
+  
+        integer it1,it2,lm,nm,k,j,i,nleft,flag
+  
+        data jord/4/
+        data fac/1.74532925e-2/
+        
+        write(*,*) '            -Program shtostt- '
+        write(*,*) 'converts continuous sh model to stt snapshots'
+        write(*,*) 'reads tesselation x,y,z,ipp '
+        write(*,*) 'with flag ipp for patch integration '
+        write(*,*) 'outputs tesselation x,y,z,br, ipp '
+        write(*,*) 'for processing by eflux'
+        write(*,*) 'models CALS3k.3MAST, ARCH3k.1MAST or SED3k.1MAST'
+        write(*,*) 'with our MAST estimation procedure for'
+        write(*,*) 'the model coefficients.'
+        write(*,*) 'Results are written to a plain text output file.'
+        write(*,*)
+        write(*,*) 'Choose model: 0 - IGRF 2020'
+        write(*,*) 'Choose model: 1 - CALS3k.3MAST'
+        write(*,*) '              2 - ARCH3k.1MAST'
+        write(*,*) '              3 - SED3k.1MAST'
+        read(*,*) flag
+        write(*,*) 'Give tesselation file name:'
+        read(*,*) tessel
+        write(*,*) 'Give output file name:'
+        if (flag.eq.0) then
+           modfile='IGRF2020'
+        else if (flag.eq.1) then
+           modfile='CALS3k.1MAST'
+        else if (flag.eq.2) then
+           modfile='ARCH3k.1MAST'
+        else if (flag.eq.3) then
+           modfile='SED3k.1MAST'
+        else 
+           write(*,*) 'ERROR: invalid model choice'
+           stop        
+        end if
+  
+  !********************************************************************
+  !     read model, if iflag =0 do IGRF for tests, etc
+  
+        open(7,file=modfile)
+    if (flag.eq.0) then 
+       time =2020.0
+  ! read snapshot into g(k)
+          write (*,*) 'lmax=?' 
+      read *, lmax
+      k=0
+      do 100 l=1,lmax
+       k=k+1
+       read(7,*) ll,mm, g(k)
+       do 110 m=1,l
+        k=k+2
+        read(7,*) ll,mm, g(k-1), g(k)
+  110	continue
+  100	continue
+      print *, k, ' coefficents read'
+      print *, (g(j),j=1,k)
+ ! *******************************************************************
+    else
+  ! do time varying stuff
+  !	ignore block of uncertainties at the end
+        write(*,*) 'Time increment :'
+        read(*,*)  itinc
+      write(*,*) itinc
+        read(7,*) tstartin,tendin
+        read(7,*) lm,nm,nspl,(tknts(i),i=1,nspl+4)
+        read(7,*) gt
+  !      read(7,*) dgt
+        close(7)
+        it1=-1000
+        it2=1990
+  
+        do i=it1,it2,itinc
+        time = dfloat(i)
+        write (*,*) 'Epoch ', time
+         alt=0.0
+        enddo
+  !-----
+  !     calculate main field coefficients and uncertainties at time time
+  10    call interv(tknts,time,nspl,nleft)
+        call bspline(tknts,time,nspl,jord,nleft,spl(nleft-3))
+        
+        do  k=1,n
+         g(k)=0.0
+         dg(k)=0.0
+         do j=1,4
+          g(k) = g(k) + spl(j+nleft-4)*gt(k,j+nleft-4)
+          dg(k)=dg(k) + spl(j+nleft-4)*dgt(k,j+nleft-4)
+         enddo 
+        enddo 
+    endif
+  ! end of untested time varying stuff
+  
+  ! Specify ouput file for stt model
+        read(*,*) outfile
+        open(11,file=outfile)
+  !
+  !*********************************************************************
+  !     Read teseslation and ipp patch configuration, convert x,y,z to lat,long
+  !
+      open(9, file =tessel)
+      npts=0
+      do j=1,nxyz
+          read(9,*,end= 101)pt(1,j),pt(2,j),pt(3,j),ipp(j)
+          call xyzll(alat(j),alon(j),pt(1,j))
+          npts=npts + 1
+      enddo
+  101	write (*,*) npts, ' read from tessel, ',tessel
+  
+  !********************************************************************
+  
+  ! Evaluate model at all tesselation points
+        do j=1,npts
+          theta = (90.0-alat(j))*fac
+          phi   = alon(j)*fac
+  !        call coords(alt,theta,rad,sd,cd)      
+  ! Set radius to CMB
+        cd=1.d0
+        sd=0.d0
+        rad= 3485.d0
+  
+          sinth=sin(theta)
+          costh=cos(theta)
+          call plmbar(p,dp,costh,lmax)
+  
+          call magfdz(p,dp,theta,phi,rad,lmax,g,dx,dy,dz,x,y,z,h,f,ainc,d,sd,cd)
+      br=-z
+  !      call errfdz(p,dp,theta,phi,rad,lmax,dg,dx,dy,dz,ex,ey,ez,sd,cd)
+  
+  !      eh=sqrt((1/h**2)*((x*ex)**2+(y*ey)**2))
+  !      ef=sqrt((1/f**2)*((x*ex)**2+(y*ey)**2+(z*ez)**2))
+  !      ei=sqrt((1/(1+(z/h)**2))**2*((ez/h)**2+((z*eh)/h**2)**2))
+  !      ed=sqrt((1/(1+(y/x)**2))**2*((ey/x)**2+((y*ex)/x**2)**2))
+  !
+  !      ainc=ainc/fac
+  !      ei=ei/fac
+  !      d=d/fac
+  !      ed=ed/fac
+  !      f=f/1000.
+  !      ef=ef/1000.
+  
+  !      write(11,6200) i,d,ainc,f,ed,ei,ef
+       write(11,*)(pt(k,j),k=1,3),br,ipp(j),time
+        end do
+  !      end do
+  99    continue
+   6100 format(i6,6f10.1)
+  6200  format(i6,2f8.2,f6.1,3f8.2)
+        close(11)
+  
+        stop   
+  
+  
+  
+  
 !--------------------------------------------------------------------------
  
       SUBROUTINE INTERV(Tknts,Time,Nspl,Nleft)
         IMPLICIT NONE
   !*--INTERV10
-  !*** Start of declarations inserted by SPAG
         INTEGER n , Nleft , Nspl
         REAL Time
-  !*** End of declarations inserted by SPAG
   !      implicit real*8 (a-h,o-z)
    
         REAL*8 Tknts(Nspl+4)
@@ -85,18 +267,15 @@
    
    
   99999 END
-  !*==BSPLINE.spg  processed by SPAG 6.72Dc at 07:24 on 30 Aug 2021
    
   !-------------------------------------------------------------------
    
         SUBROUTINE BSPLINE(Tknts,T,Nspl,Jorder,Nleft,Spl)
         IMPLICIT NONE
   !*--BSPLINE36
-  !*** Start of declarations inserted by SPAG
         INTEGER i , j , Jorder , Nleft , Nspl
         REAL saved , term
         REAL*8 T
-  !*** End of declarations inserted by SPAG
    
   ! calculate splines of order jorder where 1 <= jorder <= 4
   !       implicit real*8 (a-h,o-z)
@@ -126,17 +305,14 @@
    
    
         END
-  !*==COORDS.spg  processed by SPAG 6.72Dc at 07:24 on 30 Aug 2021
    
   !-----------------------------------------------------------------
    
         SUBROUTINE COORDS(H,Theta,R,Sd,Cd)
         IMPLICIT NONE
   !*--COORDS76
-  !*** Start of declarations inserted by SPAG
         REAL*8 b1 , b2 , Cd , clat , costh , four , H , one , pi , R ,    &
              & Sd , sinth , slat , Theta , three , two
-  !*** End of declarations inserted by SPAG
    
         pi = 3.14159265
         b1 = 40680925.
@@ -155,7 +331,6 @@
         costh = clat*Cd + slat*Sd
         Theta = pi/2. - ATAN2(sinth,costh)
         END
-  !*==MAGFDZ.spg  processed by SPAG 6.72Dc at 07:24 on 30 Aug 2021
    
   !-----------------------------------------------------------------
    
@@ -163,12 +338,10 @@
                         & Sd,Cd)
         IMPLICIT NONE
   !*--MAGFDZ106
-  !*** Start of declarations inserted by SPAG
         REAL b , bb , Cd , cost , D , dxd , dxk , dxy , dzd , dzk , F ,   &
            & H , Phi , R , Sd , sint , sinth , t , Theta , X
         REAL xs , Y , Z
         INTEGER k , k1 , l , l1 , Lmax , m
-  !*** End of declarations inserted by SPAG
    
   !
   !***************************************************************
@@ -259,18 +432,15 @@
         D = ATAN2(Y,X)
    
         END
-  !*==PLMBAR.spg  processed by SPAG 6.72Dc at 07:24 on 30 Aug 2021
    
   !---------------------------------------------------------------------
    
         SUBROUTINE PLMBAR(P,Dp,Z,Lmax)
         IMPLICIT NONE
   !*--PLMBAR209
-  !*** Start of declarations inserted by SPAG
         REAL f1 , f2 , fac , fac1 , fac2 , fden , fnum , plm , pm1 , pm2 ,&
            & pmm , sintsq , Z
         INTEGER k , kstart , l , Lmax , m
-  !*** End of declarations inserted by SPAG
   !
   !  evaluates normalized associated legendre function p(l,m) as function of
   !   z=cos(colatitude) using recurrence relation starting with p(l,l)
@@ -289,7 +459,10 @@
   !      implicit real*8(a-h,o-z)
         REAL*8 P(*) , Dp(*)
   !     --dimension of p, dp must be (lmax+1)*(lmax+2)/2 in calling program
-        IF ( Lmax.LT.0 .OR. ABS(Z).GT.1.D0 ) PAUSE 'bad arguments'
+        IF ( Lmax.LT.0 .OR. ABS(Z).GT.1.D0 ) then
+            print *, 'bad arguments'
+            stop
+        endif
   !       --case for p(l,0)
         pm2 = 1.D0
         P(1) = 1.D0
@@ -371,17 +544,14 @@
    
         ENDDO
         END
-  !*==BSPLINE1.spg  processed by SPAG 6.72Dc at 07:24 on 30 Aug 2021
    
   !------------------------------------------------------------------
    
         SUBROUTINE BSPLINE1(Tknts,T,Nspl,Nl,Spl)
         IMPLICIT NONE
   !*--BSPLINE1321
-  !*** Start of declarations inserted by SPAG
         REAL*8 B0 , B1 , T
         INTEGER is , jord , Nl , Nspl , NSPLT
-  !*** End of declarations inserted by SPAG
    
   !      implicit real*8(a-h,o-z)
         PARAMETER (NSPLT=402)
@@ -408,35 +578,28 @@
         Spl(Nl-3) = B1(Tknts,Nl-3)*spl1(Nl-2)
    
         END
-  !*==B0.spg  processed by SPAG 6.72Dc at 07:24 on 30 Aug 2021
    
         FUNCTION B0(Tknts,I)
         IMPLICIT NONE
   !*--B0356
-  !*** Start of declarations inserted by SPAG
         REAL*8 B0 , Tknts
         INTEGER I
-  !*** End of declarations inserted by SPAG
         DIMENSION Tknts(*)
    
         B0 = 3.0/(Tknts(I+3)-Tknts(I))
    
         END
-  !*==B1.spg  processed by SPAG 6.72Dc at 07:24 on 30 Aug 2021
    
         FUNCTION B1(Tknts,I)
         IMPLICIT NONE
   !*--B1370
-  !*** Start of declarations inserted by SPAG
         REAL*8 B1 , Tknts
         INTEGER I
-  !*** End of declarations inserted by SPAG
         DIMENSION Tknts(*)
    
         B1 = -3.0/(Tknts(I+4)-Tknts(I+1))
    
         END
-  !*==XYZLL.spg  processed by SPAG 6.72Dc at 07:24 on 30 Aug 2021
    
   !____________________________________________________
         SUBROUTINE XYZLL(Rlat,Rlong,X)
