@@ -4,10 +4,10 @@ PROGRAM ZONER
 !*** Start of declarations inserted by SPAG
     REAL  :: along , BCOlat1 , BCOlat2 , BLOng1 , BLOng2 , colat , cp ,   &
 		   & ct , deg , delta , phi , sp , st , step , theta, x(3), p(3, 6), &
-		   & coord(2), q(2, 2), r
+		   & coord(2), q(2, 2), r, long
     INTEGER :: i , IBOX , iflag , j , jmax , kount , nu, lkount
 !*** End of declarations inserted by SPAG
-!  Starting afresh Aug 2021,  C. Roberts
+!  Starting afresh Aug 2021,  C. Roberts with C. Constable's version
 !
 !
 !	
@@ -40,13 +40,15 @@ PROGRAM ZONER
 ! is  north pole in box? If not, value still needs to be fixed or it will take on random default value
         IF ( BCOlat1.EQ.0.0 ) THEN
 			iflag = 1
-			WRITE (30, *) r, (q(i, 1), i=1, 2)
+			lkount = 1
 		ELSE
 			iflag = -1
+!			lkount = 0
 		ENDIF
         kount = 0
         DO j = 1 , 1
             WRITE (3,*) (p(i,j),i=1,3) , iflag
+			WRITE (30, *) (q(i, 1), i=1, 2), r , iflag
         ENDDO
         kount = 1
         PRINT * , ' Enter DELTA in degrees'
@@ -69,7 +71,8 @@ PROGRAM ZONER
 !	print *, 'jmax= ',jmax
 			DO j = 1 , jmax
 			  along = (j-1)*step
-			  phi = deg*(along+0.4771*colat)
+			  long = (along+0.4771*colat)
+			  phi = deg*long
 !	uncomment  next line to align all trainsgle on zero longitude
 !	phi = deg*along
 			  cp = COS(phi)
@@ -78,30 +81,28 @@ PROGRAM ZONER
 			  x(2) = st*sp
 			  x(3) = ct
 			  iflag = IBOX(colat,along)
+			  coord(1) = 90 - colat
+			  IF (long.gt.180) long = long - 360
+			  coord(2) = long
+			  WRITE (30, *) coord, r, iflag
 			  WRITE (3,*) x , iflag
-			  IF (iflag.eq.1) THEN
-				coord(1) = 90 - colat
-				coord(2) = 180 - (along + 0.4771*colat)
-				WRITE (30, *) r, coord
-				lkount = lkount + 1
-			  ENDIF
 			  kount = 1 + kount
 		    ENDDO
 		ENDDO
 ! is south pole in box?
 		IF ( BCOlat2.EQ.180.0 ) THEN
 			iflag = 1
-			WRITE (30, *) r, (q(i, 2), i=1, 2)
-			lkount = lkount + 1
+!			lkount = lkount + 1
 		ELSE
 			iflag=-1
 		ENDIF
 		DO j = 2 , 2
 		   WRITE (3,*) (p(i,j),i=1,3) , iflag
+		   WRITE (30, *) (q(i, 2), i=1, 2), r, iflag
 		ENDDO
 		kount = kount + 1
 		PRINT * , kount , 'vectors written to tessel'
-		PRINT * , lkount , 'vectors written to llTessel'
+		PRINT * , kount , 'vectors written to llTessel'
 END PROGRAM 
 !*==IBOX.spg  processed by SPAG 6.72Dc at 00:33 on 24 Aug 2021
 !_________________________________________________

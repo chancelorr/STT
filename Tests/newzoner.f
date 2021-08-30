@@ -21,7 +21,7 @@ c is pole in box?
       open (unit=3, file='tessel')
 	do 9 j=1,1
 	write(3,*)(p(i,j),i=1,3),iflag
-9	continue
+9				continue
 	kount=2
 10      print *,' Enter DELTA in degrees'
       read *,delta
