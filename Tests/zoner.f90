@@ -6,9 +6,9 @@
 program zoner
     implicit none
 
-    real :: longIn, bColat1 , bColat2 , bLong1 , bLong2 , colat , cp ,   &
+    real :: long, bColat1 , bColat2 , bLong1 , bLong2 , colat , cp , &
     & ct , toRad , delta , phi , sp , st , theta, x(3), p(3, 6), &
-    & coord(2), q(2, 2), r, truncate
+    & coord(2), q(2, 2), r, deltaPhi
     integer :: i, j, inBox , iflag , kount , mu, nu, n
 
 !   Generates approximately equally spaced unit vectors on a sphere with
@@ -16,7 +16,7 @@ program zoner
 !   latitude bands - , end with SP.
 
 ! specify north and south poles and 4 equidistant equatorial spots  as first 6 points
-    data ((p(i,j),i=1,3),j=1,6)/0 , 0 , 1 , 0 , 0 , -1 , -1 , -1 , 0 ,&
+    data ((p(i,j),i=1,3),j=1,6)/0 , 0 , 1 , 0 , 0 , -1 , -1 , -1 , 0 , &
     & 1 , -1 , 0 , 1 , 1 , 0 , -1 , 1 , 0/
     data ((q(i, j), i=1, 2), j=1, 2)/90.0, 0.0, -90.0, 0.0/
 
@@ -75,29 +75,33 @@ mu = 180/delta
 nu = 360/delta
 
 print *, 'mu is ', mu
-print *, 'nu is ', nu
 ! nu must be looped from 1, otherwise 0 and 360 will be same point
-! LongIn should just be named long. In is for input but this is not an input
 ! Every other latitudinal line should be shifted by delta/2 to make triangles
-! Shift every even j-indexed longIn by delta/2
+! Shift every even j-indexed long by delta/2
 do i=1, (mu-1)
     colat = i*delta
     theta = toRad * colat
     ct = cos(theta)
     st = sin(theta)
+    ! Want to ensure equal area divisions
+    deltaPhi = delta/st
+    ! nu is an integer
+    nu = 360/deltaPhi
+    print *, 'nu is ', nu
     do j=1, nu
-        longIn = j*delta
-        if (mod(i, 2).eq.1) longIn = longIn + delta/2
-        phi = toRad * longIn
+        long = j*deltaPhi
+    ! shifting odd i is useful for illustration, but even i minimizes the downsized triangles
+    !    if (mod(i, 2).eq.0) long = long + deltaPhi/2
+        phi = toRad * long
         cp = cos(phi)
         sp = sin(phi)
-        x(1) = truncate(st*cp, n)
-	    x(2) = truncate(st*sp, n)
-	    x(3) = truncate(ct, n)
-        if (longIn.gt.180) longIn = longIn - 360
+        x(1) = st*cp
+        x(2) = st*sp
+        x(3) = ct
+        if (long.gt.180) long = long - 360
         coord(1) = 90 - colat
-        coord(2) = longIn
-        iflag = inBox(colat, longIn)
+        coord(2) = long
+        iflag = inBox(colat, long)
         write (3, *) x, iflag
         write (30, *) coord, r, iflag
         kount = kount + 1
@@ -116,7 +120,7 @@ write (30, *) (q(i, j), i=1, 2), r, iflag
 enddo
 kount = kount + 1
 
-! wrap it up\
+! wrap it up
 PRINT * , kount , 'vectors written to tessel and lltessel'
 
 end program zoner
@@ -124,12 +128,12 @@ end program zoner
 !
 ! _________________________________________________
 
-integer function inBox(colat, longIn)
+integer function inBox(colat, long)
 implicit none
 
-! longIn was the longitude input. 
+! long was the longitude input. 
 ! It is different from long since there are no formatting constraints
-real, intent(in) :: colat, longIn
+real, intent(in) :: colat, long
 real :: bColat1 , bColat2 , bLong1 , bLong2
 integer :: inLat, inLong
 
@@ -141,7 +145,7 @@ else
     inLat = -1
 endif
 
-if (longIn.ge.bLong1 .and. longIn.le.bLong2) then
+if (long.ge.bLong1 .and. long.le.bLong2) then
     inLong = 1
 else
     inLong = -1
