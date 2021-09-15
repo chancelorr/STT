@@ -7,8 +7,8 @@ program zoner
     implicit none
 
     real :: long, bColat1 , bColat2 , bLong1 , bLong2 , colat , cp , &
-    & ct , toRad , delta , phi , sp , st , theta, x(3), p(3, 6), &
-    & coord(2), q(2, 2), r, deltaPhi
+    & ct , toRad , phi , sp , st , theta, x(3), p(3, 6), &
+    & coord(2), q(2, 2), r, dPhi, delta, deltaTwiddle, dPhiTwiddle
     integer :: i, j, inBox , iflag , kount , mu, nu, n
 
 !   Generates approximately equally spaced unit vectors on a sphere with
@@ -46,8 +46,6 @@ program zoner
     print *, 'Enter Delta in degrees'
     print *, 'note: number of lat/long divisions will be rounded down'
     read *, delta
-    print *, ' assigning vertices for a tesselation with ', &
-    & 'angular distance', delta
 
 ! Open files for writing
     open (unit=3,file='tessel')
@@ -71,33 +69,43 @@ kount = 1
 ! Define a colatitude, latitude, and cos/sin, which require radians
 ! Spherical convention: 
 ! Keep in mind 
-mu = 180/delta
-nu = 360/delta
+mu = nint(180.0/delta)
+deltaTwiddle = 180.0/mu
+if (delta.ne.deltaTwiddle) then
+    print *, "To ensure equal spacing between tesselation vertices, "
+    print *, "Delta has been assigned value", deltaTwiddle
+else
+    print *, 'Assigning vertices for a tesselation with '
+    print *, 'angular distance', deltaTwiddle
+endif
 
-print *, 'mu is ', mu
+! print *, 'mu is ', mu
 ! nu must be looped from 1, otherwise 0 and 360 will be same point
 ! Every other latitudinal line should be shifted by delta/2 to make triangles
 ! Shift every even j-indexed long by delta/2
 do i=1, (mu-1)
-    colat = i*delta
+    colat = i*deltaTwiddle
     theta = toRad * colat
     ct = cos(theta)
     st = sin(theta)
     ! Want to ensure equal area divisions
-    deltaPhi = delta/st
+    dPhi = deltaTwiddle/st
     ! nu is an integer
-    nu = 360/deltaPhi
-    print *, 'nu is ', nu
-    do j=1, nu
-        long = j*deltaPhi
+    nu = nint(360.0/dPhi)
+    dPhiTwiddle = 360.0/nu
+    print *, 'nu times dPhiTwiddle is ', nu*dPhiTwiddle
+    print *, 'colat is ', colat
+    do j=0, (nu-1)
+        long = j*dPhiTwiddle
     ! shifting odd i is useful for illustration, but even i minimizes the downsized triangles
-    !    if (mod(i, 2).eq.0) long = long + deltaPhi/2
+        if (mod(i, 2).eq.0) long = long - dPhiTwiddle/2.0
         phi = toRad * long
         cp = cos(phi)
         sp = sin(phi)
         x(1) = st*cp
         x(2) = st*sp
         x(3) = ct
+!        print *, iflag
         if (long.gt.180) long = long - 360
         coord(1) = 90 - colat
         coord(2) = long
@@ -144,6 +152,7 @@ if (colat.ge.bColat1 .and. colat.le.bColat2) then
 else
     inLat = -1
 endif
+ 
 
 if (long.ge.bLong1 .and. long.le.bLong2) then
     inLong = 1
@@ -156,6 +165,10 @@ if (inLat.eq.1 .and. inLong.eq.1) then
 else
     inBox=-1
 endif
+!print *, 'for ', '(', colat, ', ', long, '): '
+!print *, 'inLat is ', inLat
+!print *, 'inLong is ', inLong
+!print *, 'inBox is ', inBox
 return
 end function inBox
 
