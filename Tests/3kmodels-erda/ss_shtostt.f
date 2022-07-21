@@ -1,8 +1,7 @@
       program shtostt
       implicit none
-c Cathy Constable last modified April 2020
-c	reads snaphsot sh field in form of 1,m,glm,hlm and tesselation ifn form of x,y,z, ipp
-c	evlautes br on CMB and outputs to corefile for digestion by eflux
+c     Modified version of shtostt which produces only a snapshot
+c     
 c
 c     Modified version of fieldpred.f to read stt tesselation plus ipp zone
 c 	output is stt, br,ipp
@@ -64,7 +63,7 @@ c                          geocentric coords
 c----------------------------------------------------------------------
 
 
-      integer lmax,nspl,n,np,nl,jord,nsplt,ipp,nxyz,npts,itinc
+      integer lmax,nspl,n,np,nl,jord,nsplt,ipp,nxyz,npts,epoch
 	real*8 pt
       real*8 gt,spl,tknts,g,gd,p,dp,dx,dy,dz,fac
       real*8 dg,dgt,ex,ey,ez,eh,ef,ed,ei
@@ -73,9 +72,8 @@ c----------------------------------------------------------------------
 	real*8 stime,etime, tinc
       character*30 outfile,modfile,tessel
 
-	parameter (nxyz = 50000)
-      parameter (lmax=30)
-c need to update next line and everywhere for time varying form
+	parameter (nxyz = 5000)
+      parameter (lmax=10)
       parameter (nsplt=402)
 
       parameter (n=lmax*(lmax+2))
@@ -91,7 +89,7 @@ c need to update next line and everywhere for time varying form
       dimension p(nl),dp(nl)
       dimension dx(lmax*(lmax+2)),dy(lmax*(lmax+2)),dz(lmax*(lmax+2))
 
-      integer it1,it2,lm,nm,k,j,i,nleft,flag
+      integer lm,nm,k,j,i,nleft,flag
 
       data jord/4/
       data fac/1.74532925e-2/
@@ -107,7 +105,6 @@ c need to update next line and everywhere for time varying form
       write(*,*) 'the model coefficients.'
       write(*,*) 'Results are written to a plain text output file.'
       write(*,*)
-      write(*,*) 'Choose model: 0 - IGRF 2020'
       write(*,*) 'Choose model: 1 - CALS3k.3MAST'
       write(*,*) '              2 - ARCH3k.1MAST'
       write(*,*) '              3 - SED3k.1MAST'
@@ -115,10 +112,12 @@ c need to update next line and everywhere for time varying form
       write(*,*) 'Give tesselation file name:'
       read(*,*) tessel
       write(*,*) 'Give output file name:'
-      if (flag.eq.0) then
-         modfile='IGRF2020'
-      else if (flag.eq.1) then
-         modfile='CALS3k.1MAST'
+      read(*,*) outfile
+      write(*,*) 'Model Epoch:'
+      read(*,*)  epoch
+	write(*,*) epoch
+      if (flag.eq.1) then
+         modfile='CALS3k.3MAST'
       else if (flag.eq.2) then
          modfile='ARCH3k.1MAST'
       else if (flag.eq.3) then
@@ -129,43 +128,35 @@ c need to update next line and everywhere for time varying form
       end if
 
 c********************************************************************
-c     read model, if iflag =0 do IGRF for tests, etc
-
+c     read model, ignore block of uncertainties at the end
       open(7,file=modfile)
-	 if (iflag.eq.0) then 
-	time =2020.0
-c read snapshot into g(k)
-        write (*,*) 'lmax=?' 
-	read(*,*) lmax
-	k=0
-	do 100 l=1,lmax
-	 k=k+1
-	 read(7,*) ll,mm, g(k)
-	 do 110 m=1,l
-	  k=k+2
-	  read(7,*) ll,mm, g(k-1), g(k)
-110	continue
-100	continue
-	print *, k, ' coefficents read'
-	print *, (g(j),j=1,k)
-*******************************************************************
-	else
-c do time varying stuff
-c	ignore block of uncertainties at the end
-      write(*,*) 'Time increment :'
-      read(*,*)  itinc
-	write(*,*) itinc
+
       read(7,*) tstartin,tendin
       read(7,*) lm,nm,nspl,(tknts(i),i=1,nspl+4)
       read(7,*) gt
 c      read(7,*) dgt
       close(7)
-      it1=-1000
-      it2=1990
 
-      do i=it1,it2,itinc
+      open(11,file=outfile)
+c
+c*********************************************************************
+c     Read teseslation and ipp patch configuration, convert x,y,z to lat,long
+c
+	open(9, file =tessel)
+	npts=0
+	do j=1,nxyz
+	    read(9,*,end= 100)pt(1,j),pt(2,j),pt(3,j),ipp(j)
+	    call xyzll(alat(j),alon(j),pt(1,j))
+	    npts=npts + 1
+	enddo
+100	write (*,*) npts, ' read from tessel, ',tessel
+
+c********************************************************************
+
+      i=epoch
       time = dfloat(i)
-	write (*,*) 'Epoch ', time
+! not sure we need to print every single line
+      	write (*,*) 'Epoch ', time
        alt=0.0
 c-----
 c     calculate main field coefficients and uncertainties at time time
@@ -180,26 +171,6 @@ c     calculate main field coefficients and uncertainties at time time
         dg(k)=dg(k) + spl(j+nleft-4)*dgt(k,j+nleft-4)
        enddo 
       enddo 
-	endif
-c end of untested time varying stuff
-
-c Specify ouput file for stt model
-      read(*,*) outfile
-      open(11,file=outfile)
-c
-c*********************************************************************
-c     Read teseslation and ipp patch configuration, convert x,y,z to lat,long
-c
-	open(9, file =tessel)
-	npts=0
-	do j=1,nxyz
-	    read(9,*,end= 101)pt(1,j),pt(2,j),pt(3,j),ipp(j)
-	    call xyzll(alat(j),alon(j),pt(1,j))
-	    npts=npts + 1
-	enddo
-101	write (*,*) npts, ' read from tessel, ',tessel
-
-c********************************************************************
 
 c Evaluate model at all tesselation points
       do j=1,npts
@@ -235,9 +206,8 @@ c      ef=ef/1000.
 c      write(11,6200) i,d,ainc,f,ed,ei,ef
 	 write(11,*)(pt(k,j),k=1,3),br,ipp(j),time
       end do
-c      end do
 99    continue
- 6100 format(i6,6f10.1)
+6100  format(i6,6f10.1)
 6200  format(i6,2f8.2,f6.1,3f8.2)
       close(11)
 
@@ -246,13 +216,89 @@ c      end do
 
 
 
+      subroutine errfdz(p,dp,theta,phi,r,lmax,g,dx,dy,dz,
+     >x,y,z,sd,cd)
+c     calculate uncertainties for field predictions from uncertainties
+c     in coefficients g
+c     
+c     use error propagation rules
+
+      implicit real*8 (a-h,o-z)
+      dimension g(lmax*(lmax+2))
+      dimension dx(lmax*(lmax+2)),dy(lmax*(lmax+2)),dz(lmax*(lmax+2))
+      dimension p((lmax+1)*(lmax+2)/2),dp((lmax+1)*(lmax+2)/2)
+      real*8 i
+
+
+      b=6371.2/r
+      x=0.
+      y=0.
+      z=0.
+      sinth=sin(theta)
+      if(abs(sinth).lt.1.e-10) sinth=1.e-10
+
+      do 20 l=1,lmax
+
+      l1=l+1
+      bb=b**(l+2)
+      k=l*l
+      k1=(l*l1)/2+1
+
+      dx(k)=dp(k1)*bb
+      dy(k)=0.
+      dz(k)=-p(k1)*l1*bb
+      x=x+(g(k)*dx(k))**2
+      z=z+(g(k)*dz(k))**2
+
+      do 20 m=1,l
+
+      t=float(m)*phi
+      k=l*l+2*m-1
+      k1=(l*l1)/2+m+1
+      sint=sin(t)
+      cost=cos(t)
+
+      dxd = dp(k1)*bb
+      dx(k) = dxd*cost
+      dx(k+1) = dxd*sint
+      x = x + (g(k)*dx(k))**2 + (g(k+1)*dx(k+1))**2
+
+      dxy = m*p(k1)*bb/sinth
+      dy(k) = dxy*sint
+      dy(k+1) = -dxy*cost
+      y = y + (g(k)*dy(k))**2 + (g(k+1)*dy(k+1))**2
+
+      dzd = -l1*p(k1)*bb
+      dz(k) = dzd*cost
+      dz(k+1) = dzd*sint
+      z = z + (g(k)*dz(k))**2 + (g(k+1)*dz(k+1))**2
+
+20    continue
+      
+      xs = x
+      x = x*(cd**2) + z*(sd**2)
+      z = z*(cd**2) - xs*(sd**2)
+   
+      x=sqrt(x)
+      y=sqrt(y)
+      z=sqrt(z)
+
+      do 50 k=1,lmax*(lmax+2)
+      dxk = dx(k)
+      dzk = dz(k)
+      dx(k) = dxk*cd + dzk*sd
+      dz(k) = dzk*cd - dxk*sd
+50    continue
+      
+      return
+      end
 
 c--------------------------------------------------------------------------      
       
       subroutine interv(tknts,time,nspl,nleft)
-c      implicit real*8 (a-h,o-z)
+      implicit real*8 (a-h,o-z)
       
-      real*8 tknts(nspl+4)
+      dimension tknts(nspl+4)
      
       if(time.lt.tknts(4).or.time.gt.tknts(nspl+1)) return
       
@@ -273,11 +319,11 @@ c-------------------------------------------------------------------
        subroutine bspline(tknts,t,nspl,jorder,nleft,spl)
  
 c calculate splines of order jorder where 1 <= jorder <= 4
-c       implicit real*8 (a-h,o-z)
-       real*8 tknts(nspl+4)
-       real*8 spl(4)
+       implicit real*8 (a-h,o-z)
+       dimension tknts(nspl+4)
+       dimension spl(4)
        
-       real*8 deltal(4),deltar(4)
+       dimension deltal(4),deltar(4)
        
        spl(1)=1.0
       
@@ -350,10 +396,10 @@ c     saves dx dy dz in computation
 c
 cc======================================================================
 
-c      implicit real*8 (a-h,o-z)
-      real*8 g(lmax*(lmax+2))
-      real*8 dx(lmax*(lmax+2)),dy(lmax*(lmax+2)),dz(lmax*(lmax+2))
-      real*8 p((lmax+1)*(lmax+2)/2),dp((lmax+1)*(lmax+2)/2)
+      implicit real*8 (a-h,o-z)
+      dimension g(lmax*(lmax+2))
+      dimension dx(lmax*(lmax+2)),dy(lmax*(lmax+2)),dz(lmax*(lmax+2))
+      dimension p((lmax+1)*(lmax+2)/2),dp((lmax+1)*(lmax+2)/2)
       real*8 i
 
 
@@ -440,8 +486,8 @@ c   a.jackson 19 october 1989  code added at end:
 c   (2) derivatives added and stored in dp(k)
 c       using same arrangement as for p(k)
 c
-c      implicit real*8(a-h,o-z)
-      real*8 p(*),dp(*)
+      implicit real*8(a-h,o-z)
+      dimension p(*),dp(*)
 c     --dimension of p, dp must be (lmax+1)*(lmax+2)/2 in calling program
       if (lmax.lt.0.or.abs(z).gt.1.d0) pause 'bad arguments'
 c       --case for p(l,0) 
@@ -529,10 +575,10 @@ c------------------------------------------------------------------
 
       subroutine bspline1(tknts,t,nspl,nl,spl)
       
-c      implicit real*8(a-h,o-z)
+      implicit real*8(a-h,o-z)
       parameter(nsplt=402)
-      real*8 tknts(nspl+4)
-      real*8 spl(nspl),spl1(nsplt)
+      dimension tknts(nspl+4)
+      dimension spl(nspl),spl1(nsplt)
      
       data jord/3/
       

@@ -1,5 +1,8 @@
       program shtostt
       implicit none
+c     Modified version of shtostt which produces only a snapshot
+c     
+c
 c     Modified version of fieldpred.f to read stt tesselation plus ipp zone
 c 	output is stt, br,ipp
 c     from models ARCH3k.1MAST, SED3k.1MAST or CALS3k.3MAST
@@ -60,7 +63,7 @@ c                          geocentric coords
 c----------------------------------------------------------------------
 
 
-      integer lmax,nspl,n,np,nl,jord,nsplt,ipp,nxyz,npts,itinc
+      integer lmax,nspl,n,np,nl,jord,nsplt,ipp,nxyz,npts,epoch
 	real*8 pt
       real*8 gt,spl,tknts,g,gd,p,dp,dx,dy,dz,fac
       real*8 dg,dgt,ex,ey,ez,eh,ef,ed,ei
@@ -86,7 +89,7 @@ c----------------------------------------------------------------------
       dimension p(nl),dp(nl)
       dimension dx(lmax*(lmax+2)),dy(lmax*(lmax+2)),dz(lmax*(lmax+2))
 
-      integer it1,it2,lm,nm,k,j,i,nleft,flag
+      integer lm,nm,k,j,i,nleft,flag
 
       data jord/4/
       data fac/1.74532925e-2/
@@ -110,9 +113,9 @@ c----------------------------------------------------------------------
       read(*,*) tessel
       write(*,*) 'Give output file name:'
       read(*,*) outfile
-      write(*,*) 'Time increment :'
-      read(*,*)  itinc
-	write(*,*) itinc
+      write(*,*) 'Model Epoch:'
+      read(*,*)  epoch
+	write(*,*) epoch
       if (flag.eq.1) then
          modfile='CALS3k.3MAST'
       else if (flag.eq.2) then
@@ -149,10 +152,8 @@ c
 100	write (*,*) npts, ' read from tessel, ',tessel
 
 c********************************************************************
-      it1=-1000
-      it2=1990
 
-      do i=it1,it2,itinc
+      i=epoch
       time = dfloat(i)
 ! not sure we need to print every single line
       	write (*,*) 'Epoch ', time
@@ -204,7 +205,6 @@ c      ef=ef/1000.
 
 c      write(11,6200) i,d,ainc,f,ed,ei,ef
 	 write(11,*)(pt(k,j),k=1,3),br,ipp(j),time
-      end do
       end do
 99    continue
  6100 format(i6,6f10.1)
