@@ -337,7 +337,8 @@ c  ignore patches with no flux i.e. treat as null flux points
 15	continue
 	return
 	end
-c____________________________________________________________________________________________________c_______________________________________________________________________
+c_______________________________________________________________________
+c_______________________________________________________________________
       subroutine sort22(maxp,no, x)
 	implicit double precision (a-h,o-z)
 c$$$$$ calls no other routines
@@ -757,6 +758,8 @@ c  find residual in overdetermined case.
  2300 resq=b(i)**2 + resq
       return
       end
+
+c _______________________________________________________________
       subroutine sbody(kdim, maxmum, n, p, iv, ntria)
 	implicit double precision (a-h,o-z)
 c$$$$ calls dorito,synops
