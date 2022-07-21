@@ -16,3 +16,19 @@ this is done by
 (4) repeat (2)-(3) for all epochs and add output to summary file
 
 What size tesselation? Use pdeg5 for CALS3k.3
+
+
+
+
+
+chance progress:
+
+Translated shtostt into .f90
+translated and checked zoner
+
+zoner makes model points > tessel (lat, long, rad, iflag)
+Shtostt evaluates sh model at tessel points on CMB > file (stt, br, ipp(indexing info?))
+eflux evaluates flux integrals through stt-defined null-flux patches on the core
+
+now we need to make a stttosh 
+and compare the new sh model with the original sh input to make sure that they are reasonably similar
