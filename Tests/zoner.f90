@@ -1,8 +1,9 @@
 ! This version of zoner is rewritten in f90. 
 ! by Chance adapted from C. Constable
+! most up to date version of zoner as of 7/15/2022
 ! Some modifications and additions are made.
 ! The additions: exporting a tessel file written in terms of latitude, longitude, and core radius.
-! This export is titled llTessel, and it 
+! This export is titled llTessel
 program zoner
     implicit none
 
@@ -14,7 +15,6 @@ program zoner
 !   Generates approximately equally spaced unit vectors on a sphere with
 !   user-specified separation DELTA.  Start with north pole, then increment colat by delta and go around
 !   latitude bands - , end with SP.
-
 ! specify north and south poles and 4 equidistant equatorial spots  as first 6 points
     data ((p(i,j),i=1,3),j=1,6)/0 , 0 , 1 , 0 , 0 , -1 , -1 , -1 , 0 , &
     & 1 , -1 , 0 , 1 , 1 , 0 , -1 , 1 , 0/
@@ -98,7 +98,7 @@ do i=1, (mu-1)
     do j=0, (nu-1)
         long = j*dPhiTwiddle
     ! shifting odd i is useful for illustration, but even i minimizes the downsized triangles
-        if (mod(i, 2).eq.0) long = long - dPhiTwiddle/2.0
+    !    if (mod(i, 2).eq.0) long = long - dPhiTwiddle/2.0
         phi = toRad * long
         cp = cos(phi)
         sp = sin(phi)
@@ -130,6 +130,9 @@ kount = kount + 1
 
 ! wrap it up
 PRINT * , kount , 'vectors written to tessel and lltessel'
+
+! dont need tessel file anymore
+! CALL execute_command_line('rm tessel' )
 
 end program zoner
 
