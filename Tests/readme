@@ -1,6 +1,17 @@
 This directory contains special version of tesselation code and other things for calculating flux through various patches
 on CMB for snapshots of field models
 
+Currents status (07/22)
+
+0) zoner.f90 produces core points, partitioned according to input (flagged -1, 1), output in xyz and latlon forms > tessel, llTessel
+
+1) shtostt doesn't properly evaluate the field at these points for any model
+
+
+
+
+______________________________________________
+
 General strategy is
 
 (0) Use newzoner to produce core points for tesselation and partition them into 2 regions, with flag of 1,-1 according to
