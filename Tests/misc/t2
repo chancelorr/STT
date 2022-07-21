@@ -1,0 +1,257 @@
+c______________________________________________________________________________________
+ 	subroutine frflux(ig,fratio)
+c
+	implicit double precision (a-h,o-z)
+	parameter(nxyz=6500,nxyz2=2*nxyz,nxyz6=6*nxyz,nvert=10)
+	parameter (maxob=7000,maxp=30,lmax=101,maxe=200)
+	common /io/inp,iout,iprint
+	common /tessel/n,ntria,p(4,nxyz),iv(3,nxyz2),near(nvert,nxyz)
+	common /observ/ro(3,maxob,maxe),bro(maxob,maxe),sigma(maxob,
+     $                maxe), iflag(maxob,maxe),mobs,nobs(maxe),nepoch,
+     $                lobs(maxe)
+	common /calcul/bs(maxob,maxe),a(maxob,nxyz),bc(nxyz2),
+     $         reg(nxyz,nxyz)
+	common /rule/xyw(3,100),nquad
+      common /patchy/np(maxe),npts(maxp,maxe),isign(maxp,maxe),
+     $   ipts(maxp,maxe),
+     $   lpts(2*nxyz,maxe),ntris(nxyz),itris(nxyz+1),
+     $   ltris(2*(2*nxyz-4)),lptr(2*nxyz-4,2),
+     $   llpt(maxp,maxe),npatch,ipp(nxyz)
+      common/patchg/  fluxv(maxp,maxe),gradm(maxp,nxyz,maxe)
+	common /shr/glm(lmax,lmax),hlm(lmax,lmax),plm(lmax,lmax),
+     $        dlm(lmax,lmax)
+	common /circle/v(4,nxyz2),istack(nxyz2)
+	dimension ba(maxob),parm(maxe),rlam(10),at(nxyz,nxyz),bat(nxyz)
+	character*20 problem
+	external b2int
+	write(*,*)'npatch = ',npatch
+c	calculate model dimension
+	nn=nepoch*n
+      write(*,*)'nn = ',nn
+c  clear out lower part of a
+	do 1 i=1,nn+3
+	do 1 j=1,nn+3
+1	at(i,j)=0.0
+c
+c  
+  	  open(unit=20,file='lsp',form='unformatted')
+	  read(20)lobs(1),lobs(2),l,k2k,resq1
+	  do 2 j=1,nn
+	  read(20)(at(i,j),i=1,k2k-1)
+2	  continue
+	  read(20)(bat(j),j=1,k2k-1)
+	  close(unit=20)
+	  write(*,*)'Epoch 1 ',lobs(1), ' measurements'
+	  write(*,*)'Epoch 2 ',lobs(2), ' measurements'
+	  write(*,*)l-2,' measurements',k2k-1,' rows in at ',
+     $      resq1,' = total misfit'
+c
+c
+c  Attempt to minimize difference in integrated flux over equivalent
+c  patches.  patch, flux and patceq must have been called first
+c
+c  Put flux difference matrix in to regularize. It will have npatch rows.
+c
+	call getval('lambda',rlam,3,nfound)
+	nlam=nfound
+	write(iout,*)'rlam1 = ',rlam(1)
+	rlam1=rlam(1)*float(lobs(1))
+	write(iout,*)'rlam2 = ',rlam(2)
+	rlam2=rlam(2)
+	write(iout,*)'rlam3 = ',rlam(3)
+	rlam3=rlam(3)*float(lobs(1))*fratio
+c
+c  Construct new a matrix for solution by qr. First part is flux difference mninimization
+c
+	write(*,*)npatch ,' patches acting as constraints'
+	nnpatch=npatch
+	lrow=0
+	jflag1=0
+	jflag2=0
+	do 40 i=1,npatch
+	   ba(i)=0.
+	   do 40 j=1,nn
+40	a(i,j)=0.
+	do 36 i=1,npatch
+c  For each row in flux constraint matrix check that each patch has
+c  not appeared before and use this to decide which row  (nrow)
+c  constraint gets added to
+	    write(*,*)'LLPT(i,1),LLPT(i,2)',llpt(i,1),llpt(i,2)
+	    do 1111 k=1,i-1
+	       if(llpt(k,1).eq.llpt(i,1).and.llpt(k,1).ne.99) then
+	         write(*,*)llpt(k,1),llpt(i,1)
+	         nrow=k
+	         nnpatch=nnpatch-1
+	         jflag1=1
+	         goto 3
+	       else if(llpt(k,2).eq.llpt(i,2).and.llpt(k,2).ne.99) then
+	         write(*,*)llpt(k,2),llpt(i,2)
+	         nrow=k
+	         nnpatch=nnpatch-1
+	         jflag2=1
+	         goto 3
+	       endif
+1111	    continue
+	    lrow=lrow+1
+	    nrow=lrow
+3	    write(iout,*)nrow,llpt(i,1),llpt(i,2)
+	    if(jflag1.eq.0.and.jflag2.eq.0)then
+	     if(llpt(i,2).ne.99.and.llpt(i,1).ne.99) then
+c  Try and equivalence flux at epoch 1 and 2
+	       ba(nrow)=fluxv(llpt(i,2),2)*sqrt(rlam3)
+	       do 37 j=1,n
+37	       a(nrow,j)=a(nrow,j) + gradm(llpt(i,1),j,1)*sqrt(rlam3)
+	     else if(llpt(i,2).eq.99) then
+c  Try and reduce flux through epoch 1 patch to zero
+	       ba(nrow)=0.
+	       do 38 j=1,n
+38	       a(nrow,j)=a(nrow,j) + gradm(llpt(i,1),j,1)*sqrt(rlam3)
+	     else if(llpt(i,1).eq.99) then
+c  Make a new patch at epoch 1 for compatibility with 2
+	       ba(nrow)=fluxv(llpt(i,2),2)*sqrt(rlam3)
+	       call pmaker(llpt(i,2),1)
+	       do 34 j=1,n
+34	       a(nrow,j)=a(nrow,j) + gradm(maxp,j,1)*sqrt(rlam3)
+	       write(iout,*)'Flux through pmaker patch is ',
+     $         fluxv(maxp,1)
+	     endif
+	   else if (jflag1.eq.1) then
+c  Equate 1 patch at epoch 1 to 2 at epoch 2
+	     ba(nrow)=ba(nrow) + fluxv(llpt(i,2),2)*sqrt(rlam3)
+	   else if(jflag2.eq.1) then
+c  Equate 2 patches at epoch 1 to 1 at epoch 2
+	     do 39 j=1,n
+39	     a(nrow,j)=a(nrow,j) + gradm(llpt(i,1),j,1) *sqrt(rlam3)
+	   endif
+	  jflag1=0
+	  jflag2=0
+36	continue
+        write (*,*) 'patch part of matrix complete'
+	write(*,*)nnpatch,' patches acting as constraints'
+	npatch=nnpatch
+	if(k2k-1.eq.nn)then
+c  Original ls problem was overdetermined
+c  Add in triangular part of data in alternating rows
+c  Allow for individual epoch satisfaction of misfit critieria
+	   kk=k2k-n-1
+	   write(iout,*)' First  ',kk, ' data weighted by sqrt(rlam2)'
+	   do 409 i=1,kk
+	     ba(npatch+2*i-1)=sqrt(rlam2)*bat(i)
+	     do 409 j=1,n
+	     a(npatch+2*i-1,j)=sqrt(rlam2)*at(i,j)
+409	   continue
+c
+c  Add regularization constraint
+c
+cc
+	   if(problem(1:7).eq.'minbrsq')then
+	     nf=2
+	     nnn=n
+	   else if(problem(1:7).eq.'mingrad')then
+	     nf=4
+	     nnn=n-1
+	   else 
+	     nf=2
+	     nnn=n
+	   endif
+	   write(*,*)' Computing regularization matrix for epoch 1'
+	   call regul(nf)
+	   write(*,*)'returned from regul'
+	  do 25 i=1, nnn
+	   ba(npatch+2*i)=0.
+	   do 25 j=1,n
+	   a(npatch + 2*i,j)=reg(i,j)*sqrt(rlam1)
+25	  continue
+	  nkk=npatch
+	else
+c  Original ls problem was underdetermined
+c  Put data in uppermost block with gradients matrix
+c  Allow for individual epoch satisfaction of misfit critieria
+	kk=k2k-n-1
+	write(iout,*)' First  ',kk, ' data weighted by sqrt(rlam2)'
+	do 419 i=1,kk
+	  ba(npatch+i)=sqrt(rlam2)*bat(i)
+	  do 419 j=1,n
+	  a(npatch+i,j)=sqrt(rlam2)*at(i,j)
+419	continue
+c
+c  Add regularization constraint on both epochs
+c
+cc
+	if(problem(1:7).eq.'minbrsq')then
+	   nf=2
+	   nnn=n
+	else if(problem(1:7).eq.'mingrad')then
+	   nf=4
+	   nnn=n-1
+	else 
+	   nf=2
+	   nnn=n
+	endif
+	write(*,*)' Computing regularization matrix for epoch 1'
+	call regul(nf)
+	write(*,*)'returned from regul'
+	  do 215 i=1, nnn
+	   ba(npatch+k2k-1+i)=0.
+	   do 215 j=1,n
+	   a(npatch + k2k-1+i,j)=reg(i,j)*sqrt(rlam1)
+215	  continue
+	  nkk=npatch + kk
+	endif
+c  Save pathc part of matirx in at,bat
+	do 35 i=1,npatch
+	   bat(i)=ba(i)
+	do 35 j=1,n
+35	at(i,j)=a(i,j)
+c
+	ll=npatch + kk + nnn
+c  
+c  solve this regularized problem
+c
+	write(iout,*)'ll= ',ll, ' nkk= ',nkk
+	call sspqr(maxob,ll,n,a,ba,bc,resqr,nkk)
+	if (resqr.le.0)write(iout,*) resqr, ' singular matrix in regul qr'
+	write(iout,*)'qr rms misfit =', sqrt(resqr/float(lobs(1)))
+c
+c  compute approx integrated difference parameter between epochs
+c
+	fdiff=0.0
+	do 43 i=1,npatch
+	 ba(i)=0.
+	 do 44 j=1,n
+	  ba(i)=ba(i) + at(i,j)*bc(j)
+44	 continue
+	 write(iout,*)'Nrow ',i, ' flux ', ba(i),
+     $             ' target flux ',bat(i)
+         fdiff=fdiff + (ba(i)-bat(i))**2
+43	continue
+	write(iout,*)'linearized approx to squared integrated diff. 
+     $  in flux over core is ', fdiff
+     c
+c  compute integrated regularization parameter for each epoch
+c
+	p1=0.0
+	do 27 k=1,nepoch
+	do 28 i=1,nnn
+	 ba(i+(k-1)*n)=0.
+	 do 29 j=1,n
+	  ba(i+(k-1)*n)=ba(i+(k-1)*n) + reg(i,j)*bc(j+(k-1)*n)
+29	 continue
+28	continue
+	parm(k)=0.
+	do 30 j=1,nnn
+	parm(k)=parm(k)+ ba(j+(k-1)*n)*ba(j+(k-1)*n)
+30	continue
+	p1=p1+parm(k)
+	write(iout,*)'Epoch ',k
+	if(nf.eq.2)then
+	write(iout,*)'integrated br**2 over core is ',parm(k)
+	else if(nf.eq.4)then
+	write(iout,*)'integrated (grad br)**2 over core is ',parm(k)
+	endif
+27	continue
+	   write(iout,*)'regularized model rms misfit =',
+     $      sqrt((resqr-rlam3*fdiff+resq1-rlam1*p1)/float(l))
+      return
+	end
+c_______________________________________________________________________
