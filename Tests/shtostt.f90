@@ -107,8 +107,9 @@ program shtostt
       print *, 'Results are written to a plain text output file.'
       print *, ' '
       print *, 'Choose model: 1 - CALS3k.3MAST'
-      print *, '              2 - ARCH3k.1MAST'
-      print *, '              3 - SED3k.1MAST'
+      print *, '              2 - CALS3k.4MAST'
+      print *, '              3 - ARCH3k.1MAST'
+      print *, '              4 - SED3k.1MAST'
       read(*,*) flag
       print *, 'Give tesselation file name:'
       read(*,*) tessel
@@ -119,8 +120,10 @@ program shtostt
       else if (flag.eq.1) then
             modfile='CALS3k.3MAST'
       else if (flag.eq.2) then
-            modfile='ARCH3k.1MAST'
+            modfile='CALS3k.4MAST'
       else if (flag.eq.3) then
+            modfile='ARCH3k.1MAST'
+      else if (flag.eq.4) then
             modfile='SED3k.1MAST'
       else 
             print *, 'ERROR: invalid model choice'
@@ -158,7 +161,7 @@ program shtostt
             print *, itinc
             read(7,*) tstartin,tendin
             read(7,*) lm,nm,nspl,(tknts(i),i=1,nspl+4)
-            read(7,*) gt
+            ! read(7,*) gt
             ! read(7,*) dgt
             close(7)
             it1=-1000
