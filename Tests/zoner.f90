@@ -93,8 +93,8 @@ do i=1, (mu-1)
     ! nu is an integer
     nu = nint(360.0/dPhi)
     dPhiTwiddle = 360.0/nu
-    print *, 'nu times dPhiTwiddle is ', nu*dPhiTwiddle
-    print *, 'colat is ', colat
+!    print *, 'nu times dPhiTwiddle is ', nu*dPhiTwiddle
+!    print *, 'colat is ', colat
     do j=0, (nu-1)
         long = j*dPhiTwiddle
     ! shifting odd i is useful for illustration, but even i minimizes the downsized triangles
