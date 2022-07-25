@@ -3,6 +3,7 @@ c  Last update Sept 2021
       implicit none
 c     Modified version of fieldpred.f to read stt tesselation plus ipp zone
 c 	output is stt, br,ipp
+c     naming convention is model,degrees,time increment
 c     from models ARCH3k.1MAST, SED3k.1MAST or CALS3k.3MAST
 c     These three model files have to be in the same directory as the program.
 c
@@ -68,7 +69,7 @@ c----------------------------------------------------------------------
       real*8 alat,alon,alt,time,theta,phi,rad,sinth,costh,sd,cd
       real*8 br,x,y,z,h,f,ainc,d,tstartin,tendin
 	real*8 stime,etime, tinc
-      character*30 outfile,modfile,tessel
+      character itincC*4, cPts*3, modfile*30, modname*3, outfile*11
 
 	parameter (nxyz = 5000)
       parameter (lmax=10)
@@ -94,9 +95,9 @@ c----------------------------------------------------------------------
       
       write(*,*) '            -Program shtostt- '
       write(*,*) 'converts continuous sh model to stt snapshots'
-      write(*,*) 'reads tesselation x,y,z,ipp '
+      write(*,*) 'reads core points x,y,z,ipp '
       write(*,*) 'with flag ipp for patch integration '
-      write(*,*) 'outputs tesselation x,y,z,br, ipp '
+      write(*,*) 'outputs evaluated x,y,z,br, ipp '
       write(*,*) 'for processing by eflux'
       write(*,*) 'models CALS3k.3MAST, ARCH3k.1MAST or SED3k.1MAST'
       write(*,*) 'with our MAST estimation procedure for'
@@ -107,23 +108,28 @@ c----------------------------------------------------------------------
       write(*,*) '              2 - ARCH3k.1MAST'
       write(*,*) '              3 - SED3k.1MAST'
       read(*,*) flag
-      write(*,*) 'Give tesselation file name:'
-      read(*,*) tessel
-      write(*,*) 'Give output file name:'
-      read(*,*) outfile
+      write(*,*) 'Give core points file name:'
+      read(*,*) cPts
+c      write(*,*) 'Give output file name:'
+c      read(*,*) outfile
       write(*,*) 'Time increment :'
       read(*,*)  itinc
 	write(*,*) itinc
+      write(itincC, '(I4.4)') itinc
       if (flag.eq.1) then
          modfile='models/CALS3k.3MAST'
+         modname='mC3'
       else if (flag.eq.2) then
          modfile='models/ARCH3k.1MAST'
+         modname='mA1'
       else if (flag.eq.3) then
          modfile='models/SED3k.1MAST'
+         modname='mS1'
       else 
          write(*,*) 'ERROR: invalid model choice'
          stop        
       end if
+      outfile=modname//cPts//'i'//itincC
 
 c********************************************************************
 c     read model, ignore block of uncertainties at the end
@@ -135,19 +141,20 @@ c     read model, ignore block of uncertainties at the end
 c      read(7,*) dgt
       close(7)
 
+c      print *, 'opening ', 'stt/'//outfile
       open(11,file='stt/'//outfile)
 c
 c*********************************************************************
 c     Read teseslation and ipp patch configuration, convert x,y,z to lat,long
 c
-	open(9, file =tessel)
+	open(9, file ='pts/'//cPts)
 	npts=0
 	do j=1,nxyz
 	    read(9,*,end= 100)pt(1,j),pt(2,j),pt(3,j),ipp(j)
 	    call xyzll(alat(j),alon(j),pt(1,j))
 	    npts=npts + 1
 	enddo
-100	write (*,*) npts, ' read from tessel, ',tessel
+100	write (*,*) npts, ' read from core points file, ',cPts
 
 c********************************************************************
       it1=-1000
@@ -159,7 +166,7 @@ c********************************************************************
        alt=0.0
 c-----
 c     calculate main field coefficients and uncertainties at time time
-10    call interv(tknts,time,nspl,nleft)
+      call interv(tknts,time,nspl,nleft)
       call bspline(tknts,time,nspl,jord,nleft,spl(nleft-3))
       
       do  k=1,n
