@@ -1,4 +1,4 @@
-c  LAst update Sept 2021
+c  Last update Sept 2021
       program shtostt
       implicit none
 c     Modified version of fieldpred.f to read stt tesselation plus ipp zone
@@ -135,7 +135,7 @@ c     read model, ignore block of uncertainties at the end
 c      read(7,*) dgt
       close(7)
 
-      open(11,file=outfile)
+      open(11,file='stt/'//outfile)
 c
 c*********************************************************************
 c     Read teseslation and ipp patch configuration, convert x,y,z to lat,long
@@ -300,6 +300,7 @@ c--------------------------------------------------------------------------
       
       dimension tknts(nspl+4)
      
+      print *, 'Calling interv'
       if(time.lt.tknts(4).or.time.gt.tknts(nspl+1)) return
       
       do 200 n=5,nspl+1
