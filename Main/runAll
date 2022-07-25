@@ -1,0 +1,21 @@
+#!/bin/zsh
+
+r='0 180 -90 90'
+deg=5
+model=1 #CALS3k.4
+inc=1000
+outName=inc$inc\deg$deg
+
+./zoner <<!
+$r
+$deg
+!
+
+./shtostt <<!
+$model
+tessel
+$inc
+$outName
+!
+
+#rm tessel

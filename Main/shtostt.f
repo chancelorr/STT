@@ -115,11 +115,11 @@ c----------------------------------------------------------------------
       read(*,*)  itinc
 	write(*,*) itinc
       if (flag.eq.1) then
-         modfile='CALS3k.3MAST'
+         modfile='models/CALS3k.3MAST'
       else if (flag.eq.2) then
-         modfile='ARCH3k.1MAST'
+         modfile='models/ARCH3k.1MAST'
       else if (flag.eq.3) then
-         modfile='SED3k.1MAST'
+         modfile='models/SED3k.1MAST'
       else 
          write(*,*) 'ERROR: invalid model choice'
          stop        
