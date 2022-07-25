@@ -11,6 +11,7 @@ program zoner
     & ct , toRad , phi , sp , st , theta, x(3), p(3, 6), &
     & coord(2), q(2, 2), r, dPhi, delta, deltaTwiddle, dPhiTwiddle
     integer :: i, j, inBox , iflag , kount , mu, nu, n
+    character :: fname*5, deltaC*2
 
 !   Generates approximately equally spaced unit vectors on a sphere with
 !   user-specified separation DELTA.  Start with north pole, then increment colat by delta and go around
@@ -46,10 +47,12 @@ program zoner
     print *, 'Enter Delta in degrees'
     print *, 'note: number of lat/long divisions will be rounded down'
     read *, delta
+    write(deltaC, '(I2.2)') nint(delta)
 
-! Open files for writing
-    open (unit=3,file='tessel')
-    open (unit=30, file='llTessel')	
+! Name and Open files for writing
+    fname = 'deg'//deltaC
+    open (unit=3,file='pts/'//fname)
+    open (unit=30, file='pts/'//'ll'//fname)
 
 ! Need to manually write the poles. Starting with north
 ! iflag must be fix either way, otherwise it returns a crazy number
