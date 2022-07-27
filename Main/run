@@ -1,0 +1,19 @@
+#!/bin/zsh
+
+r='0 180 -90 90'
+deg=05
+model=1 #CALS3k.4
+outType=1 #snapshot
+t=1000
+
+./zoner <<!
+$r
+$deg
+!
+
+./shtostt <<!
+$model
+d$deg
+$outType
+$t
+!

@@ -7,13 +7,19 @@ Currents status (07/22)
     input: desired region
     output: (x, y, z, flag) and (lat, long, flag)
         named for degree (d) specification - d##, lld##
+        stored in pts
 
 1) shtostt evaluates the field from an sh model
     input: model choice
         core point model
         whether to read one or many snapshots
             Snapshot time or time increment
-    output: x, y, z, br, flag, epoch
-            snapshot: m(model)d(degrees)p/n(time)
-                here p/n denotes positive or negative time
-            many snapshots: m(model)d(degrees)i(increment)
+    output file: x, y, z, br, flag, epoch
+            stored in stt
+        snapshot: m(model)d(degrees)p/n(time)
+            here p/n denotes positive or negative time
+        many snapshots: m(model)d(degrees)i(increment)
+    output model: lmax, nmax, nspl, g
+            stored in sh
+        snapshot: SH ''
+        many snapshots: SH ''
