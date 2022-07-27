@@ -219,7 +219,7 @@ c      write(11,6200) i,d,ainc,f,ed,ei,ef
       close(11)
 
       stop
-      end      
+      end
 
 
 
