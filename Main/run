@@ -1,8 +1,8 @@
 #!/bin/zsh
 
 r='0 180 -90 90'
-deg=05
-model=1 #CALS3k.4
+deg=02
+model=1 #CALS3k.3
 outType=1 #snapshot
 t=1000
 
@@ -17,3 +17,5 @@ d$deg
 $outType
 $t
 !
+
+echo 'made ' 'mC'$model '  '$t 
