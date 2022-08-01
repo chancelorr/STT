@@ -51,8 +51,8 @@ program zoner
 
 ! Name and Open files for writing
     fname = 'd'//deltaC
-    open (unit=3,file='pts/'//fname)
-    open (unit=30, file='pts/'//'ll'//fname)
+    open (unit=3,file='cpts/'//fname)
+    open (unit=30, file='cpts/'//'ll'//fname)
 
 ! Need to manually write the poles. Starting with north
 ! iflag must be fix either way, otherwise it returns a crazy number

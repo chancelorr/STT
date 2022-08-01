@@ -9,7 +9,7 @@ PROGRAM SHTOSTT
 !
 !	Uncertainty estimates are ignored
 !
-!     Original .f77 Cathy Constable, June 2009
+!     Original .f Cathy Constable, June 2009
 !     Translated to .f90 and cleaned up by Chancelor Roberts, July 2022
 !
 !
@@ -71,7 +71,7 @@ PROGRAM SHTOSTT
       REAL*8 :: alat , alon , alt , time , theta , phi , rad , sinth ,     &
             & costh , sd , cd
       REAL*8 :: br , x , y , z , h , f , ainc , d , tstartin , tendin
-      CHARACTER :: oTC*1, itincc*4 , cpts*3 , modfile*30 , modname*3 , outfile*11, outmodel*13
+      CHARACTER :: oTC*1, itincc*4 , cpts*3 , modfile*30 , modname*3 , outfile*11, outmodel*10
       
       PARAMETER (NXYZ=5000)
       PARAMETER (LMAX=10)
@@ -161,7 +161,7 @@ PROGRAM SHTOSTT
             STOP
       ENDIF
       outfile = modname//cpts//oTC//itincc
-      outmodel = 'SH'//modname//cpts//oTc//itincc
+      outmodel = 'SH'//modname//oTc//itincc
       
 !********************************************************************
 !     read model, ignore block of uncertainties at the end
@@ -183,7 +183,7 @@ PROGRAM SHTOSTT
 !      write (70, *) tstartin
 !      write (71, *) tendin
       READ (7,*) lm , nm , nspl , (tknts(i),i=1,nspl+4)
-      write (12, '(i2, i2, i6)', advance='no') lm , nm, tcount
+      write (12, '(i2, i2, i6, a)', advance='no') lm , nm, tcount, NEW_LINE('')
 
 !      write (72,*) lm
 !      write (73,*) nm
@@ -197,7 +197,7 @@ PROGRAM SHTOSTT
 !*********************************************************************
 !     Read teseslation and ipp patch configuration, convert x,y,z to lat,long
 !
-      OPEN (9,FILE='pts/'//cpts)
+      OPEN (9,FILE='cpts/'//cpts)
       npts = 0
       DO j = 1 , NXYZ
             READ (9,*,END=100) pt(1,j) , pt(2,j) , pt(3,j) , ipp(j)
@@ -211,8 +211,9 @@ PROGRAM SHTOSTT
       
       
       do i = it1, it2, itinc
-            write (12, '(S, f21.13)', advance='no') DFLOAT(i)
+            write (12, '(S, f19.13)', advance='no') DFLOAT(i)
       enddo
+      write (12, *) NEW_LINE(''), 'l      m     glm   hlm'
 
       do i = it1, it2, itinc
             time = DFLOAT(i)
@@ -220,7 +221,7 @@ PROGRAM SHTOSTT
             alt = 0.0
 
 !-----
-!     calculate main field coefficients and uncertainties at time time
+!     calculate main field coefficients at time time
             CALL INTERV(tknts,time,nspl,nleft)
             CALL BSPLINE(tknts,time,nspl,jord,nleft,spl(nleft-3))
       
@@ -230,7 +231,8 @@ PROGRAM SHTOSTT
                         g(k) = g(k) + spl(j+nleft-4)*gt(k,j+nleft-4)
                   ENDDO
             ENDDO
-            write (12, *) g
+            call serialToVerbose(g)
+!            write (12, *) g
       
 ! Evaluate model at all tesselation points
             DO j = 1 , npts
@@ -627,3 +629,37 @@ PROGRAM SHTOSTT
       Rlong = drad*ATAN2(X(2),X(1))
       END
 !_____________________________________________________________
+
+!____________________________________________________
+      subroutine serialToVerbose(g)
+            implicit NONE
+            
+            integer :: lmax, n, i, l, m
+            real*8 :: g
+            
+            PARAMETER (LMAX=10)
+            PARAMETER (N=LMAX*(LMAX+2))
+
+            Dimension :: g(n)
+
+            i=1
+            do l=1, lmax
+                  do m=0, l
+                        if (m.eq.0) THEN
+                              write (12, '(i2, i10, S, f26.13, f26.13, a)', advance='no') l, m, g(i), 0.0, NEW_LINE('')
+            !                  print *, l, m, g(i), 0.0
+                              i = i+1
+                        elseif (m.ne.0) THEN
+                              write (12,'(i2, i10, S, f26.13, f26.13, a)', advance='no') l, m, g(i), g(i+1), NEW_LINE('')
+            !                  print *, l, m, g(i), g(i+1)
+                              i = i+2
+                        endif
+                  enddo
+            enddo
+      end
+                  
+
+
+
+
+!____________________________________________________
