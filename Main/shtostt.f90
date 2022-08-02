@@ -1,6 +1,9 @@
 !  Last update Jul 2022
 PROGRAM SHTOSTT
       IMPLICIT NONE
+!     Modified version of shtostt.f90 which will import and output cpts written in latlong coordinates
+!     Since the xyz form is never actually used anyway
+!      
 !     Modified version of fieldpred.f to read stt tesselation plus ipp zone
 ! 	output is stt, br,ipp
 !     naming convention is model,degrees,time increment
@@ -67,7 +70,8 @@ PROGRAM SHTOSTT
       INTEGER :: LMAX , nspl , N , NP , NL , jord , NSPLT , ipp , NXYZ ,   &
             & npts
       INTEGER :: it1 , it2 , lm , nm , k , j , i , nleft
-      REAL*8 :: pt, gt , spl , tknts , g , p , dp , dx , dy , dz , fac
+      REAL*8 :: bColat1 , bColat2 , bLong1 , bLong2
+      REAL*8 :: gt , spl , tknts , g , p , dp , dx , dy , dz , fac
       REAL*8 :: alat , alon , alt , time , theta , phi , rad , sinth ,     &
             & costh , sd , cd
       REAL*8 :: br , x , y , z , h , f , ainc , d , tstartin , tendin
@@ -86,7 +90,7 @@ PROGRAM SHTOSTT
       
       DIMENSION g(N)
       
-      DIMENSION pt(4,NXYZ) , alat(NXYZ) , alon(NXYZ) , ipp(NXYZ)
+      DIMENSION alat(NXYZ) , alon(NXYZ) , ipp(NXYZ)
       DIMENSION p(NL) , dp(NL)
       DIMENSION dx(LMAX*(LMAX+2)) , dy(LMAX*(LMAX+2)) ,                 &
                   & dz(LMAX*(LMAX+2))
@@ -168,29 +172,13 @@ PROGRAM SHTOSTT
       OPEN (7,FILE=modfile)
       OPEN (11,FILE='stt/'//outfile)
       open (12, file='sh/'//outmodel)
-
-!      open (70, file='read/ts')
-!      open (71, file='read/te')
-
-!      open (72, file='read/lm')
-!      open (73, file='read/nm')
-!      open (74, file='read/nspl')
-!      open (75, file='read/tknts')
-
-!      open (76, file='read/gt')
       
       READ (7,*) tstartin , tendin
-!      write (70, *) tstartin
-!      write (71, *) tendin
       READ (7,*) lm , nm , nspl , (tknts(i),i=1,nspl+4)
       write (12, '(i2, i2, i6, a)', advance='no') lm , nm, tcount, NEW_LINE('')
 
-!      write (72,*) lm
-!      write (73,*) nm
-!      write (74,*) nspl
-!      write (75,*) (tknts(i),i=1,nspl+4)
       READ (7,*) gt
-!      write (76,*) gt
+      
       CLOSE (7)
       
 !
@@ -199,9 +187,12 @@ PROGRAM SHTOSTT
 !
       OPEN (9,FILE='cpts/'//cpts)
       npts = 0
+      Read (9, *) bColat1 , bColat2 , bLong1 , bLong2
+      Read (9, *) rad
+      write (11, *) bColat1 , bColat2 , bLong1 , bLong2
+      write (11, *) rad
       DO j = 1 , NXYZ
-            READ (9,*,END=100) pt(1,j) , pt(2,j) , pt(3,j) , ipp(j)
-            CALL XYZLL(alat(j),alon(j),pt(1,j))
+            Read (9, *, End=100) alat(j), alon(j), ipp(j)
             npts = npts + 1
       ENDDO
       100  WRITE (*,*) npts , ' read from core points file, ' , cpts
@@ -213,7 +204,7 @@ PROGRAM SHTOSTT
       do i = it1, it2, itinc
             write (12, '(S, f19.13)', advance='no') DFLOAT(i)
       enddo
-      write (12, *) NEW_LINE(''), 'l      m     glm   hlm'
+      write (12, '(/)')
 
       do i = it1, it2, itinc
             time = DFLOAT(i)
@@ -232,17 +223,14 @@ PROGRAM SHTOSTT
                   ENDDO
             ENDDO
             call serialToVerbose(g)
-!            write (12, *) g
       
 ! Evaluate model at all tesselation points
             DO j = 1 , npts
             theta = (90.0-alat(j))*fac
             phi = alon(j)*fac
 !     call coords(alt,theta,rad,sd,cd)
-!     Set radius to CMB
             cd = 1.D0
             sd = 0.D0
-            rad = 3485.D0
       
             sinth = SIN(theta)
             costh = COS(theta)
@@ -251,11 +239,9 @@ PROGRAM SHTOSTT
             CALL MAGFDZ(p,dp,theta,phi,rad,LMAX,g,dx,dy,dz,x,y,z,h,f,   &
                         & ainc,d,sd,cd)
             br = -z
-            WRITE (11,*) (pt(k,j),k=1,3) , br , ipp(j) , time
+            WRITE (11,*) alat(j), alon(j), br , ipp(j) , time
             ENDDO
       ENDDO
-!      99001 FORMAT(i6,6F10.1)
-!      99002 format(i6,2f8.2,f6.1,3f8.2)
 
       CLOSE (11)
       close (12)
@@ -617,18 +603,6 @@ PROGRAM SHTOSTT
       
       END
       
-      
-!____________________________________________________
-      SUBROUTINE XYZLL(Rlat,Rlong,X)
-      IMPLICIT NONE
-      
-!  Maps unit vector x into lat, long (degrees)
-      REAL*8 :: X(3) , Rlat , Rlong , drad
-      DATA drad/57.29577951/
-      Rlat = drad*ATAN2(X(3),SQRT(X(2)**2+X(1)**2))
-      Rlong = drad*ATAN2(X(2),X(1))
-      END
-!_____________________________________________________________
 
 !____________________________________________________
       subroutine serialToVerbose(g)

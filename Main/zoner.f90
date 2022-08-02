@@ -2,13 +2,12 @@
 ! by Chance adapted from C. Constable
 ! most up to date version of zoner as of 7/15/2022
 ! Some modifications and additions are made.
-! The additions: exporting a tessel file written in terms of latitude, longitude, and core radius.
-! This export is titled llTessel
+! The additions: exporting a core points file written in terms of latitude, longitude, and core radius.
 program zoner
     implicit none
 
-    real :: long, bColat1 , bColat2 , bLong1 , bLong2 , colat , cp , &
-    & ct , toRad , phi , sp , st , theta, x(3), p(3, 6), &
+    real :: long, bColat1 , bColat2 , bLong1 , bLong2 , colat , &
+    & toRad , st , ct, theta, &
     & coord(2), q(2, 2), r, dPhi, delta, deltaTwiddle, dPhiTwiddle
     integer :: i, j, inBox , iflag , kount , mu, nu, n
     character :: fname*3, deltaC*2
@@ -17,13 +16,11 @@ program zoner
 !   user-specified separation DELTA.  Start with north pole, then increment colat by delta and go around
 !   latitude bands - , end with SP.
 ! specify north and south poles and 4 equidistant equatorial spots  as first 6 points
-    data ((p(i,j),i=1,3),j=1,6)/0 , 0 , 1 , 0 , 0 , -1 , -1 , -1 , 0 , &
-    & 1 , -1 , 0 , 1 , 1 , 0 , -1 , 1 , 0/
     data ((q(i, j), i=1, 2), j=1, 2)/90.0, 0.0, -90.0, 0.0/
 
 ! Set some values
     data toRad/0.01745329/
-    data r/3486.0E3/
+    data r/3486.D0/
     data n/6/
 
 ! Inputs to exist as common block boxy
@@ -51,8 +48,9 @@ program zoner
 
 ! Name and Open files for writing
     fname = 'd'//deltaC
-    open (unit=3,file='cpts/'//fname)
-    open (unit=30, file='cpts/'//'ll'//fname)
+    open (unit=30, file='cpts/'//fname)
+    write (30, *) bColat1 , bColat2 , bLong1 , bLong2
+    write (30, *) r
 
 ! Need to manually write the poles. Starting with north
 ! iflag must be fix either way, otherwise it returns a crazy number
@@ -63,8 +61,7 @@ program zoner
     endif
     kount = 0
 do j=1, 1
-    write (3, *) (p(i, j), i=1, 3), iflag
-    write (30, *) (q(i, j), i=1, 2), r, iflag
+    write (30, *) (q(i, j), i=1, 2), iflag
 enddo
 kount = 1
 
@@ -100,21 +97,11 @@ do i=1, (mu-1)
 !    print *, 'colat is ', colat
     do j=0, (nu-1)
         long = j*dPhiTwiddle
-    ! shifting odd i is useful for illustration, but even i minimizes the downsized triangles
-    !    if (mod(i, 2).eq.0) long = long - dPhiTwiddle/2.0
-        phi = toRad * long
-        cp = cos(phi)
-        sp = sin(phi)
-        x(1) = st*cp
-        x(2) = st*sp
-        x(3) = ct
-!        print *, iflag
         if (long.gt.180) long = long - 360
         coord(1) = 90 - colat
         coord(2) = long
         iflag = inBox(colat, long)
-        write (3, *) x, iflag
-        write (30, *) coord, r, iflag
+        write (30, *) coord, iflag
         kount = kount + 1
     enddo
 enddo
@@ -126,8 +113,7 @@ else
     iflag = -1
 endif
 do j=2, 2
-write (3, *) (p(i, j), i=1, 3), iflag
-write (30, *) (q(i, j), i=1, 2), r, iflag
+write (30, *) (q(i, j), i=1, 2), iflag
 enddo
 kount = kount + 1
 
