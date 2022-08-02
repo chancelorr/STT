@@ -175,7 +175,7 @@ integer :: n, numBig
 real :: num
 
 ! numBig is an integer, this is the truncation step
-numBig = num * (10.0 ** n)
+numBig = int(num * (10.0 ** n))
 num = numBig/(10.0 ** n)
 
 return
