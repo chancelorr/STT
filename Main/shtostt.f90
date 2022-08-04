@@ -607,6 +607,8 @@ PROGRAM SHTOSTT
 !____________________________________________________
       subroutine serialToVerbose(g)
             implicit NONE
+
+            !     Reformats serial list of gauss coefficients
             
             integer :: lmax, n, i, l, m
             real*8 :: g
