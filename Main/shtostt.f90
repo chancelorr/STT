@@ -77,7 +77,7 @@ PROGRAM SHTOSTT
       REAL*8 :: br , x , y , z , h , f , ainc , d , tstartin , tendin
       CHARACTER :: oTC*1, itincc*4 , cpts*3 , modfile*30 , modname*3 , outfile*11, outmodel*10
       
-      PARAMETER (NXYZ=5000)
+      PARAMETER (NXYZ=20000)
       PARAMETER (LMAX=10)
       PARAMETER (NSPLT=402)
       

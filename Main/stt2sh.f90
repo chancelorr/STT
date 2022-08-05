@@ -1,7 +1,7 @@
 PROGRAM STTTOSH
 ! Written by C. Constable
 ! Modified by Chancelor Roberts
-! Updating July 2022 to produce a program for translating stt core field models to Schmidt normalized SH models at Earth Surface
+! Updating July 2022 to produce a program for creating stt core field models then translating them to Schmidt normalized SH models at Earth Surface
 ! Uncompleted modification in June 2009 at GFZ- started form fflux7.f, stripping out forward and inverse parts
     IMPLICIT NONE
     
@@ -114,7 +114,7 @@ PROGRAM STTTOSH
 !	plm(l+1,m+1):  Legendre polynomial of degree l, order m
 !
 !
-    PARAMETER (NXYZ=6500,NXYZ2=2*NXYZ,NXYZ6=6*NXYZ,NVERT=10)
+    PARAMETER (NXYZ=20000,NXYZ2=2*NXYZ,NXYZ6=6*NXYZ,NVERT=10)
     PARAMETER (MAXOB=7000,MAXP=30,LMAX=101,MAXE=200)
     COMMON /IO    / INP , IOUt , IPRint
     COMMON /TESSEL/ N , NTRia , P(4,NXYZ) , IV(3,NXYZ2) ,             &
@@ -178,7 +178,7 @@ PROGRAM STTTOSH
 !   Read in core model with patch assignations
     CALL GETVAL('epochs',val,nwant1,nfound)
     NEPoch = NINT(val(1))
-    CALL GETCHR('corefile',filnam,nfound)
+    CALL GETCHR('corefield',filnam,nfound)
     OPEN (UNIT=20,FILE=filnam)
     READ (20, *) bColat1 , bColat2 , bLong1 , bLong2
     READ (20, *) r0
@@ -893,7 +893,7 @@ PROGRAM STTTOSH
 !  Computes the tessellation or reads the appropriate
 !  pointers from a file.
 !
-    PARAMETER (NXYZ=6500,NXYZ2=2*NXYZ)
+    PARAMETER (NXYZ=20000,NXYZ2=2*NXYZ)
     CHARACTER*80 name
     COMMON /IO    / INP , IOUt , IPRint
     COMMON /BOUND / DMIn , DMAx , AMIn , AMAx
@@ -906,8 +906,8 @@ PROGRAM STTTOSH
     new = NINT(val(1))
 !
 !  Get x, y, z, triples from disk.
-    IF ( Kdim.EQ.3 ) CALL GETCHR('tessel',name,nfound)
-    IF ( Kdim.EQ.4 ) CALL GETCHR('corefile',name,nfound)
+    IF ( Kdim.EQ.3 ) CALL GETCHR('corepoints',name,nfound)
+    IF ( Kdim.EQ.4 ) CALL GETCHR('corefield',name,nfound)
     WRITE (IOUt,'(1x,a,a50)') 'Core points read from file: ' , name
     OPEN (UNIT=12,FILE=name)
     READ (12, *) bColat1 , bColat2 , bLong1 , bLong2
@@ -993,7 +993,7 @@ PROGRAM STTTOSH
 !
 !  The parameter nxyz is the maximum number of unit vectors allowed.
 !  The parameter nvert is the maximum number of faces at any vertex.
-    PARAMETER (NXYZ=6500,NXYZ2=2*NXYZ,NVERT=10)
+    PARAMETER (NXYZ=20000,NXYZ2=2*NXYZ,NVERT=10)
     COMMON /TESSEL/ N , NTRia , P(4,NXYZ) , IV(3,NXYZ2) ,             &
                 & NEAr(NVERT,NXYZ)
     DIMENSION neigh(100)
@@ -1112,7 +1112,7 @@ PROGRAM STTTOSH
 !
 !*****requires sort2, gpole
 !
-    PARAMETER (NXYZ=6500,NXYZ2=2*NXYZ,NVERT=10)
+    PARAMETER (NXYZ=20000,NXYZ2=2*NXYZ,NVERT=10)
     COMMON /TESSEL/ N , NTRia , P(4,NXYZ) , IV(3,NXYZ2) ,             &
                 & NEAr(NVERT,NXYZ)
     DIMENSION x(3) , phi(NVERT,2) , Neigh(Nn)
@@ -1582,7 +1582,7 @@ PROGRAM STTTOSH
 !  (this calculation is assumed performed already).
 !
 !
-    PARAMETER (NXYZ=6500,NXYZ2=2*NXYZ,NVERT=10)
+    PARAMETER (NXYZ=20000,NXYZ2=2*NXYZ,NVERT=10)
     PARAMETER (MAXOB=7000,MAXE=200)
     COMMON /IO    / INP , IOUt , IPRint
     COMMON /TESSEL/ N , NTRia , P(4,NXYZ) , IV(3,NXYZ2) ,             &
@@ -1642,7 +1642,7 @@ PROGRAM STTTOSH
 !
 !  The results are returned in common /calcul/
 !
-    PARAMETER (NXYZ=6500,NXYZ2=2*NXYZ,NVERT=10)
+    PARAMETER (NXYZ=20000,NXYZ2=2*NXYZ,NVERT=10)
     PARAMETER (MAXOB=7000,MAXE=200)
     COMMON /IO    / INP , IOUt , IPRint
     COMMON /TESSEL/ N , NTRia , P(4,NXYZ) , IV(3,NXYZ2) ,             &
@@ -1890,7 +1890,7 @@ PROGRAM STTTOSH
 !    next integration sample point
 !  next triangle.
 !
-    PARAMETER (NXYZ=6500,NXYZ2=2*NXYZ,MAXP=30,NVERT=10,MAXE=200)
+    PARAMETER (NXYZ=20000,NXYZ2=2*NXYZ,MAXP=30,NVERT=10,MAXE=200)
     DIMENSION rp(3) , g(3) , vc(4) , aa(3) , b(3) , c(3) , ua(2) ,    &
             & ub(2) , uc(2) , rg(2) , rpa(3)
     COMMON /PATCHY/ NP(MAXE) , NPTs(MAXP,MAXE) , ISIgn(MAXP,MAXE) ,   &
@@ -2016,7 +2016,7 @@ PROGRAM STTTOSH
 !
 !* calls signm
 !
-    PARAMETER (NXYZ=6500,NVERT=10,NXYZ2=2*NXYZ)
+    PARAMETER (NXYZ=20000,NVERT=10,NXYZ2=2*NXYZ)
     PARAMETER (MAXP=30,MAXE=200)
     COMMON /IO    / INP , IOUt , IPRint
     COMMON /PATCHY/ NP(MAXE) , NPTs(MAXP,MAXE) , ISIgn(MAXP,MAXE) ,   &
@@ -2194,7 +2194,7 @@ PROGRAM STTTOSH
 !  returns the sign of Br at the ith vertex.
 !* Calls no other routines.
 !
-    PARAMETER (NXYZ=6500,NVERT=10,NXYZ2=2*NXYZ)
+    PARAMETER (NXYZ=20000,NVERT=10,NXYZ2=2*NXYZ)
     COMMON /TESSEL/ N , NTRia , P(4,NXYZ) , IV(3,NXYZ2) ,             &
                 & NEAr(NVERT,NXYZ)
     SIGNM = -1
@@ -2213,7 +2213,7 @@ PROGRAM STTTOSH
 !  returns the sign of ipp at the ith vertex.
 !* Calls no other routines.
 !
-    PARAMETER (NXYZ=6500,NVERT=10,NXYZ2=2*NXYZ)
+    PARAMETER (NXYZ=20000,NVERT=10,NXYZ2=2*NXYZ)
     PARAMETER (MAXP=30,MAXE=200)
     COMMON /PATCHY/ NP(MAXE) , NPTs(MAXP,MAXE) , ISIgn(MAXP,MAXE) ,   &
                 & IPTs(MAXP,MAXE) , LPTs(2*NXYZ,MAXE) , NTRis(NXYZ) &
@@ -2253,7 +2253,7 @@ PROGRAM STTTOSH
 !
 !  The results are returned in common /calcul/
 !
-    PARAMETER (NXYZ=6500,NXYZ2=2*NXYZ,NVERT=10)
+    PARAMETER (NXYZ=20000,NXYZ2=2*NXYZ,NVERT=10)
     PARAMETER (LMAX=101)
     COMMON /IO    / INP , IOUt , IPRint
     COMMON /TESSEL/ N , NTRia , P(4,NXYZ) , IV(3,NXYZ2) ,             &
@@ -2660,7 +2660,7 @@ PROGRAM STTTOSH
     &'     upper triangular form after initial qr (-1) (M)' ,        &
     &'problem n:  Forward (1) or inverse (-1) or fflux (0)' ,        &
     &'     problem (M)' ,                                            &
-    &'corefile file: file with core model for forward calculation (O)'
+    &'corefield file: file with core model for forward calculation (O)'
         WRITE (IOUt,'(/(2x,a))')                                    &
     &'shrep ldeg r: degree and radius at whish to evaluate spherical'&
     & , '       harmonic representation (O)' ,                        &
@@ -2670,7 +2670,7 @@ PROGRAM STTTOSH
     &'lambda rlam1, rlam2,...:  Lagrange multipliers (M)' ,          &
     &'tnew n: tesselation exists (0), needs creating (1,2), 2 saves a'&
     & , '       file for plotting' ,                                   &
-    &'tessel file: file with tesselation points (M)' ,                &
+    &'corepoints file: file with tesselation points (M)' ,                &
     &'pointer file: file with pointers for triangles (M)' ,           &
     &'bodydim n: dimension of tesselation points (M)' ,               &
     &'zero n1,n2,...: make the listed points in the tesselation have' &
@@ -2717,7 +2717,7 @@ PROGRAM STTTOSH
         &'design n:   Construct design matrix (1), read it (0) or read'&
     & , 'upper triangule form after initial qr (-1) (M)' ,          &
         &'problem n:  Forward (1) or inverse (-1) problem (M)' ,       &
-    &'corefile file: file with core model for forward calculation (O)'&
+    &'corefield file: file with core model for forward calculation (O)'&
     & ,                                                                &
     &'shrep ldeg r: degree and radius at whish to evaluate spherical' &
     & , 'harmonic representation (O)'
@@ -2728,7 +2728,7 @@ PROGRAM STTTOSH
     &'lambda rlam1, rlam2,...:  Lagrange multipliers (M)' ,         &
     &'tnew n: tesselation exists (0), needs creating (1,2), 2 saves a'&
     & , 'file for plotting' ,                                          &
-    &'tessel file: file with tesselation points (M)' ,                &
+    &'corepoints file: file with tesselation points (M)' ,                &
     &'pointer file: file with pointers for triangles (M)' ,           &
     &'bodydim n: dimension of tesselation points (M)' , ' '
         ENDIF
@@ -2744,7 +2744,7 @@ PROGRAM STTTOSH
 200  nflag = 0
     CALL GETCHR('e1file',filnam,nfound)
 !	if(nfound.lt.0)nflag=1
-    CALL GETCHR('tessel',filnam,nfound)
+    CALL GETCHR('corepoints',filnam,nfound)
     IF ( nfound.LT.0 ) nflag = 1
     CALL GETCHR('pointer',filnam,nfound)
     IF ( nfound.LT.0 ) nflag = 1
@@ -3349,7 +3349,7 @@ PROGRAM STTTOSH
 !  run file and run one iteration at a time
 !  llpt is reordered so that llpt(i,1) is a patch equivalent to llpt(i,2)
 !
-    PARAMETER (NXYZ=6500,NXYZ2=2*NXYZ,NVERT=10)
+    PARAMETER (NXYZ=20000,NXYZ2=2*NXYZ,NVERT=10)
     PARAMETER (MAXP=30,MAXE=200)
     COMMON /IO    / INP , IOUt , IPRint
     COMMON /TESSEL/ N , NTRia , P(4,NXYZ) , IV(3,NXYZ2) ,             &
@@ -3688,7 +3688,7 @@ PROGRAM STTTOSH
 !    next integration sample point
 !  next triangle.
 !
-    PARAMETER (NXYZ=6500,NXYZ2=2*NXYZ,MAXP=30,NVERT=10,MAXE=200)
+    PARAMETER (NXYZ=20000,NXYZ2=2*NXYZ,MAXP=30,NVERT=10,MAXE=200)
     DIMENSION rp(3) , g(3) , vc(4) , aa(3) , b(3) , c(3) , ua(2) ,    &
             & ub(2) , uc(2) , rg(2) , rpa(3)
     COMMON /PATCHY/ NP(MAXE) , NPTs(MAXP,MAXE) , ISIgn(MAXP,MAXE) ,   &
