@@ -17,11 +17,19 @@ Currents status (07/22)
             Snapshot time or time increment
     output file: lat long, br, flag, epoch
             header: region // radius
-            stored in stt
+            stored in stt/
         snapshot: m(model)d(degrees)p/n(time)
             here p/n denotes positive or negative time
         many snapshots: m(model)d(degrees)i(increment)
     output model: lmax, nmax, number of epochs // epoch(s) // l, m, glm, hlm
-            stored in sh
+            stored in sh/
         snapshot: SH m(model)d(degrees)p/n(time)
         many snapshots: SH m(model)d(degrees)i(increment)
+
+2) stt2sh recovers an sh model from the stt
+    !! Support for snapshots only currently !!
+    input: run file with commands
+        core points, core field (br), pointer (name for output file), etc
+    output file: lmax, nmax, number of epochs // l, m, glm, hlm
+            stored in shOut/
+        snapshot: SHR m(model)d(degrees)p/n(time)
