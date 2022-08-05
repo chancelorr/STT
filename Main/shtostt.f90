@@ -4,8 +4,8 @@ PROGRAM SHTOSTT
 !     Modified version of shtostt.f90 which will import and output cpts written in latlong coordinates
 !     Since the xyz form is never actually used anyway
 !      
-!     Modified version of fieldpred.f to read stt tesselation plus ipp zone
-! 	output is stt, br,ipp
+!     Modified version of fieldpred.f to read core points plus ipp zone
+! 	output is cpts, br,ipp
 !     naming convention is model,degrees,time increment
 !     from models ARCH3k.1MAST, SED3k.1MAST or CALS3k.3MAST
 !     These three model files have to be in the same directory as the program.
@@ -99,7 +99,7 @@ PROGRAM SHTOSTT
       DATA fac/1.74532925E-2/
       
       WRITE (*,*) '            -Program shtostt- '
-      WRITE (*,*) 'converts continuous sh model to stt snapshots'
+      WRITE (*,*) 'converts continuous sh model to core field snapshots'
       WRITE (*,*) 'reads core points x,y,z,ipp '
       WRITE (*,*) 'with flag ipp for patch integration '
       WRITE (*,*) 'outputs evaluated x,y,z,br, ipp '
@@ -170,7 +170,7 @@ PROGRAM SHTOSTT
 !********************************************************************
 !     read model, ignore block of uncertainties at the end
       OPEN (7,FILE=modfile)
-      OPEN (11,FILE='stt/'//outfile)
+      OPEN (11,FILE='cfield/'//outfile)
       open (12, file='sh/'//outmodel)
       
       READ (7,*) tstartin , tendin
