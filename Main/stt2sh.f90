@@ -8,7 +8,8 @@ PROGRAM STTTOSH
     DOUBLE PRECISION :: A , AMAx , AMIn , BC , BRO , BS , DLM , DMAx ,   &
                     & DMIn , fluxd0 , fluxt , FLUxv , GLM , GRAdm ,    &
                     & HLM , P , PLM , r , rc , REG
-    DOUBLE PRECISION :: RO , SIGma , time , V , val , x , XYW , y , z
+    DOUBLE PRECISION :: RO , SIGma , t, time , V , val , x , XYW , y , z
+    double precision :: bColat1 , bColat2 , bLong1 , bLong2, r0, lat, lon
     INTEGER :: i , i1 , i2 , if , IFLag , INP , IOUt , ip , IPP ,        &
         & IPRint , IPTs , ISIgn , ISTack , ITRis , IV , j , k ,     &
         & kdim , kk , l
@@ -179,9 +180,11 @@ PROGRAM STTTOSH
     NEPoch = NINT(val(1))
     CALL GETCHR('corefile',filnam,nfound)
     OPEN (UNIT=20,FILE=filnam)
+    READ (20, *) bColat1 , bColat2 , bLong1 , bLong2
+    READ (20, *) r0
     DO kk = 1 , NEPoch
         DO i = 1 , N
-        READ (20,*) x , y , z , BC(i) , IPP(i)
+        READ (20,*) lat, lon , BC(i) , IPP(i), t
 !,time
         P(4,i) = BC(i)
         ENDDO
@@ -198,11 +201,14 @@ PROGRAM STTTOSH
         r = val(2)
         IF ( nfound.GT.0 .AND. ldeg.GT.0 ) THEN
         CALL SHEXP(ldeg,r)
+        OPEN(UNIT=21, FILE='shOut/SHR'//filnam(8:))
+        write (21, '(i2, i2, i3, a)', advance='no') ldeg, 0, NEpoch, NEW_LINE('')
+        
         WRITE (IOUt,*)                                              &
-                        &' Spherical Harmonic Representation follows: '
+            &' Writing Spherical Harmonic Representation to: '//'shOut/SHR'//filnam(8:)
         DO l = 0 , ldeg
             DO m = 0 , l
-                WRITE (IOUt,*) l , m , GLM(l+1,m+1) , HLM(l+1,m+1)
+                write (21,'(i2, i10, S, f26.13, f26.13, a)', advance='no') l, m, GLM(l+1,m+1) , HLM(l+1,m+1), NEW_LINE('')
             ENDDO
         ENDDO
         ENDIF
@@ -244,6 +250,7 @@ PROGRAM STTTOSH
         CALL FLUSH(IOUt)
         ENDIF
     ENDDO
+    CLOSE(unit=20)
     END
 !_______________________________________________________________________
 !_______________________________________________________________________
@@ -512,6 +519,8 @@ PROGRAM STTTOSH
 !  Starting configuration for the sphere is specified by
 !  8 right triangles, in iv(i,j),j=1,...8
 !  Compute the circumcentres and "radii" for these triangles.
+
+
     DO i = 1 , 8
         CALL SCIRC(P(1,Iv(1,i)),P(1,Iv(2,i)),P(1,Iv(3,i)),V(1,i))
     ENDDO
@@ -631,7 +640,7 @@ PROGRAM STTTOSH
         a(3,i) = X3(i)
         b(i) = 1.0
     ENDDO
-!	write(6,*) resq,' resqin'
+!    write(6,*) resq,' resqin'
     CALL QR(3,3,3,a,b,C,resq)
 !	write(6,*) resq,' resqout'
     IF ( resq.LT.0. ) THEN
@@ -871,6 +880,7 @@ PROGRAM STTTOSH
 
     DOUBLE PRECISION AMAx , AMIn , cnorm , DMAx , DMIn , DOTTY , P ,  &
                     & V , val
+    double precision :: bColat1 , bColat2 , bLong1 , bLong2, r0, t
     INTEGER i , INP , IOUt , IPRint , ISTack , Iv , j , k , Kdim ,    &
         & Maxmum , maxv , N , new , nfound , niv , Ntria , nwant1 , &
         & NXYZ , NXYZ2
@@ -888,7 +898,7 @@ PROGRAM STTTOSH
     COMMON /IO    / INP , IOUt , IPRint
     COMMON /BOUND / DMIn , DMAx , AMIn , AMAx
     COMMON /CIRCLE/ V(4,NXYZ2) , ISTack(NXYZ2)
-    DIMENSION P(4,*) , Iv(*)
+    DIMENSION P(4,*), Iv(*)
     DIMENSION val(10)
 !
 !
@@ -900,8 +910,14 @@ PROGRAM STTTOSH
     IF ( Kdim.EQ.4 ) CALL GETCHR('corefile',name,nfound)
     WRITE (IOUt,'(1x,a,a50)') 'Core points read from file: ' , name
     OPEN (UNIT=12,FILE=name)
+    READ (12, *) bColat1 , bColat2 , bLong1 , bLong2
+    READ (12, *) r0
+!   Read lat and lon into the array sized for xyz coordinates
+!   call lltoxyz to reassign the values accordingly
+!   so p(3, i) is just a dummy variable when calling the function 
     DO i = 1 , NXYZ
-        READ (12,*,ERR=100,END=200) (P(j,i),j=1,Kdim)
+        READ (12,*,ERR=100,END=200) (p(j, i), j=1, Kdim), t
+        Call LLTOXYZ(p(1:3, i))
     ENDDO
 100  WRITE (IOUt,'(1x,a,i6,a/a)') 'Core point file was truncated at ' ,&
                                 & NXYZ , ' data' ,                     &
@@ -921,7 +937,7 @@ PROGRAM STTTOSH
 !  Pointers on disk.  Get pointer vectors from disk.
     IF ( new.EQ.0 ) THEN
         CALL GETCHR('pointer',name,nfound)
-        WRITE (6,'(a)') name
+        WRITE (*,'(a)') name
         OPEN (UNIT=13,FILE=name)
         maxv = 2*NXYZ - 4
         Ntria = 0
@@ -2842,7 +2858,8 @@ PROGRAM STTTOSH
         & nb , Nfound , NIN
 !$$$$ calls no other routines
     PARAMETER (INMX=200)
-    CHARACTER*80 INPut(INMX) , line , Code*4
+    CHARACTER*80 INPut(INMX) , line
+    CHARACTER Code*4
     CHARACTER*(*) Char
     COMMON /DICTA / INPut
     COMMON /NDICT / IECho , NIN , ISTate(INMX)
@@ -3852,3 +3869,42 @@ PROGRAM STTTOSH
     WRITE (IOUt,'(/a)') ' Triangle areas written to file fort.4'
     WRITE (IOUt,'(/a)') ' Triangle angles written to file fort.5'
     END
+
+!_________________________________________________________________________
+!
+
+    SUBROUTINE LLTOXYZ(x)
+        IMPLICIT NONE
+
+    ! Read in lat, lon, dummy var    
+
+        double precision :: colat, lon
+        double precision :: theta, toRad, ct, st, cp, sp, phi
+        double precision :: x(3)
+
+        data toRad/0.01745329/
+
+    !   Store lat, lon
+
+        colat=90 - x(1)
+        lon=x(2)
+
+        theta = toRad * colat
+        ct = cos(theta)
+        st = sin(theta)
+
+        phi = toRad * lon
+        cp = cos(phi)
+        sp = sin(phi)
+     
+    !   Compute x, y, z 
+        x(1) = (st*cp)
+        x(2) = (st*sp)
+        x(3) = ct
+
+        open (unit=77, file='out/sttOut')
+        write (77, *) x(1), x(2), x(3)
+    END
+!_________________________________________________________________
+
+
