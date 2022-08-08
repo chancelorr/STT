@@ -8,7 +8,7 @@ PROGRAM STTTOSH
     DOUBLE PRECISION :: A , AMAx , AMIn , BC , BRO , BS , DLM , DMAx ,   &
                     & DMIn , fluxd0 , fluxt , FLUxv , GLM , GRAdm ,    &
                     & HLM , P , PLM , r , rc , REG
-    DOUBLE PRECISION :: RO , SIGma , t, time , V , val , x , XYW , y , z
+    DOUBLE PRECISION :: RO , SIGma , t, time , V , val , XYW
     double precision :: bColat1 , bColat2 , bLong1 , bLong2, r0, lat, lon
     INTEGER :: i , i1 , i2 , if , IFLag , INP , IOUt , ip , IPP ,        &
         & IPRint , IPTs , ISIgn , ISTack , ITRis , IV , j , k ,     &
@@ -3902,8 +3902,6 @@ PROGRAM STTTOSH
         x(2) = (st*sp)
         x(3) = ct
 
-        open (unit=77, file='out/sttOut')
-        write (77, *) x(1), x(2), x(3)
     END
 !_________________________________________________________________
 
