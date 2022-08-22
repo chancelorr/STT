@@ -1,21 +1,81 @@
 #!/bin/zsh
 
-r='0 180 -90 90'
-deg=02
-model=1 #CALS3k.3
-outType=1 #snapshot
-t=1000
+### switches
+#	0 off
+#	1 on
+ioZ=0
+ioSH=1
+ioSTT=1
 
+### options
+r='0 180 -90 90'
+# Delta
+deg=05
+### models
+#	0 C2 - CALS10k.2
+#	1 C4 - CALS3k.4
+#	2 A1 - ARCH3k.1
+#	3 S1 - SED3k.1
+model=0
+### output type
+#	1 for snapshot
+#	2 for incremented epochs
+outType=1
+t=1990
+###
+
+########################### BEGIN ###########################
+
+### mods based on options
+if ((model==0)); then m=mC2
+elif ((model==1)); then m=mC4
+elif ((model==2)); then m=mA1
+elif ((model==3)); then m=mS1
+else; echo 'Invalid model choice'; exit
+fi
+
+### Need to change stt2sh input manually ###
+
+if ((ioZ==1)); then
+echo 'running zoner'
 ./zoner <<!
 $r
 $deg
 !
+fi
 
+
+if ((ioSH==1)); then
+Echo 'running shtostt'
 ./shtostt <<!
 $model
 d$deg
 $outType
 $t
 !
+fi
 
-echo 'made ' 'mC'$model '  '$t 
+
+# Because stt2sh doesnt read in epochs, 
+# filenames need to come in the correct format
+if (( t < 0 )); then ttype=n; t=${t:1:4}
+elif (( t >= 0 )); then ttype=p
+fi
+
+
+if ((ioSTT==1)); then
+echo 'running stt2sh'
+./stt2sh <<!
+tnew 1
+corepoints cpts/d$deg
+corefield cfield/${m}d${deg}$ttype$t
+pointer pointers/pd$deg
+bodydim 3
+epochs 1
+problem 1
+shrep 10 6486
+ patches 1
+ fiter 0
+cont
+!
+fi

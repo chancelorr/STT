@@ -1,4 +1,0 @@
-1              %choose model 1 is CALS3k.3
-deg5_ns        %tesselation and 2 bounded regions
-deg5_ns_br     %output file for core br model
-1000           %start and end epoch, time increment
