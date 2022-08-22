@@ -1,35 +1,56 @@
 This directory contains main versions of tesselation code and other things for calculating flux through various patches
 on CMB for snapshots of field models
+Also contains code to generate gmt maps of the global field at any radius
 
-Currents status (07/22)
+As of 08/22
 
-0) zoner.f90 produces core points, partitioned according to input region (flagged -1, 1)
+TO USE:
+
+execute makeall to compile f95 codes
+execute run to make corepoints (zoner), core field (shtostt), 
+    and recovered spherical harmonic (stt2sh) using options at top of tile
+execute makeMap (in maps) to create a gmt map after specifying options at the top of file
+
+MODELS SUPPORTED:
+
+CALS10k.2, CALS3k.4, ARCH3k.1, SED3k.1
+
+SPHERICAL HARMONICS FORMAT:
+    lmax, nmax, number of epochs
+    epoch(s)
+    l, m, glm, hlm (including monopole)
+
+F95 CODES:
+
+zoner produces core points, partitioned according to input region (flagged -1, 1)
     input: desired region
     output: lat, long, flag
         header: region // radius
         named for degree (d) specification - d##
         stored in cpts
 
-1) shtostt evaluates the field from an sh model
+shtostt evaluates the field from an sh model
     input: model choice
         core point model
         whether to read one or many snapshots
             Snapshot time or time increment
     output file: lat long, br, flag, epoch
             header: region // radius
-            stored in stt/
+            stored in cfield/
         snapshot: m(model)d(degrees)p/n(time)
             here p/n denotes positive or negative time
         many snapshots: m(model)d(degrees)i(increment)
-    output model: lmax, nmax, number of epochs // epoch(s) // l, m, glm, hlm
-            stored in sh/
+    output model: stored in sh/ using specified format
         snapshot: SH m(model)d(degrees)p/n(time)
         many snapshots: SH m(model)d(degrees)i(increment)
 
-2) stt2sh recovers an sh model from the stt
+stt2sh recovers an sh model from the stt
     !! Support for snapshots only currently !!
     input: run file with commands
         core points, core field (br), pointer (name for output file), etc
-    output file: lmax, nmax, number of epochs // l, m, glm, hlm
-            stored in shOut/
+    output file: stored in shOut/ using specified format
         snapshot: SHR m(model)d(degrees)p/n(time)
+
+dwnwdCnt downward continues a spherical harmonic file
+    input: sh model at surface (1.00), output file, output radius (as a fraction of surface radius), model type (Br or Psi)
+    output: temporary SH model (.tmp) using specified sh format
