@@ -203,6 +203,7 @@ PROGRAM STTTOSH
         CALL SHEXP(ldeg,r)
         OPEN(UNIT=21, FILE='shOut/SHR'//filnam(8:))
         write (21, '(i2, i2, i3, a)', advance='no') ldeg, 0, NEpoch, NEW_LINE('')
+        write (21, '(S, f19.13)') t
         
         WRITE (IOUt,*)                                              &
             &' Writing Spherical Harmonic Representation to: '//'shOut/SHR'//filnam(8:)

@@ -118,7 +118,7 @@ enddo
 kount = kount + 1
 
 ! wrap it up
-PRINT * , kount , 'vectors written to tessel and lltessel'
+PRINT * , kount , 'vectors written to cpts/'//fname
 
 ! dont need tessel file anymore
 ! CALL execute_command_line('rm tessel' )

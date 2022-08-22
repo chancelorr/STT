@@ -1,0 +1,9 @@
+#!/bin/bash
+
+cd f95
+gfortran zoner.f95 -o ../zoner
+gfortran shtostt.f95 -o ../shtostt
+gfortran stt2sh.f95 -o ../stt2sh
+gfortran dwnwdCnt.f95 -o ../maps/dwnwdCnt
+cd ..
+

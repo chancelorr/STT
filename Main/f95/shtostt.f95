@@ -7,7 +7,7 @@ PROGRAM SHTOSTT
 !     Modified version of fieldpred.f to read core points plus ipp zone
 ! 	output is cpts, br,ipp
 !     naming convention is model,degrees,time increment
-!     from models ARCH3k.1MAST, SED3k.1MAST or CALS3k.3MAST
+!     from models ARCH3k.1MAST, SED3k.1MAST or CALS3k.4MAST
 !     These three model files have to be in the same directory as the program.
 !
 !	Uncertainty estimates are ignored
@@ -66,23 +66,24 @@ PROGRAM SHTOSTT
 !----------------------------------------------------------------------
       
       
-      INTEGER :: flag, outType, itinc, tcount
-      INTEGER :: LMAX , nspl , N , NP , NL , jord , NSPLT , ipp , NXYZ ,   &
+      INTEGER :: flag, outType, itinc
+      INTEGER :: LMAX , nspl , N , NL , jord , ipp , NXYZ ,   &
             & npts
+      INTEGER :: NSPLT
+      REAL*8 :: tknts, spl, gt
       INTEGER :: it1 , it2 , lm , nm , k , j , i , nleft
       REAL*8 :: bColat1 , bColat2 , bLong1 , bLong2
-      REAL*8 :: gt , spl , tknts , g , p , dp , dx , dy , dz , fac
+      REAL*8 :: p , dp , dx , dy , dz , fac
       REAL*8 :: alat , alon , alt , time , theta , phi , rad , sinth ,     &
-            & costh , sd , cd
+            & costh , sd , cd, g
       REAL*8 :: br , x , y , z , h , f , ainc , d , tstartin , tendin
       CHARACTER :: oTC*1, itincc*4 , cpts*3 , modfile*30 , modname*3 , outfile*11, outmodel*10
       
       PARAMETER (NXYZ=20000)
       PARAMETER (LMAX=10)
-      PARAMETER (NSPLT=402)
+      PARAMETER (NSPLT=500)
       
       PARAMETER (N=LMAX*(LMAX+2))
-      PARAMETER (NP=N*NSPLT)
       PARAMETER (NL=(LMAX+1)*(LMAX+2)/2)
 
       DIMENSION gt(N,NSPLT)
@@ -104,14 +105,15 @@ PROGRAM SHTOSTT
       WRITE (*,*) 'with flag ipp for patch integration '
       WRITE (*,*) 'outputs evaluated x,y,z,br, ipp '
       WRITE (*,*) 'for processing by eflux'
-      WRITE (*,*) 'models CALS3k.3MAST, ARCH3k.1MAST or SED3k.1MAST'
+      WRITE (*,*) 'models CALS3k.4MAST, ARCH3k.1MAST or SED3k.1MAST'
       WRITE (*,*) 'with our MAST estimation procedure for'
       WRITE (*,*) 'the model coefficients.'
       WRITE (*,*) 'Results are written to a plain text output file.'
       WRITE (*,*)
-      WRITE (*,*) 'Choose model: 1 - CALS3k.3MAST'
-      WRITE (*,*) '              2 - ARCH3k.1MAST'
-      WRITE (*,*) '              3 - SED3k.1MAST'
+      WRITE (*,*) 'Choose model: 0 - CALS10k.2'
+      WRITE (*,*) '              1 - CALS3k.4'
+      WRITE (*,*) '              2 - ARCH3k.1'
+      WRITE (*,*) '              3 - SED3k.1'
       READ (*,*) flag
       WRITE (*,*) 'Give core points file name:'
       READ (*,*) cpts
@@ -132,28 +134,32 @@ PROGRAM SHTOSTT
             endif
             it1=nint(time)
             it2=nint(time)
-!                 Doesnt matter what itinc is here
-            itinc = nint(time)
-            tcount=1
+!                 Doesnt matter what itinc is here since it1=it2f
+            itinc = 1000
+            nspl=1
       elseif (outType.eq.2) then
             WRITE (*,*) 'Time increment :'
             READ (*,*) itinc
             WRITE (itincc,'(I4.4)') itinc
             oTC='i'
-            it1 = -1000
+            it1 = -2000
             it2 = 1990
-            tcount=0
+            nspl=0
             do i=it1, it2, itinc
-                  tcount = tcount + 1
+                  nspl = nspl + 1
             enddo
       else
             write (*, *) 'ERROR: Invalid output type'
             stop
       endif
 
-      IF ( flag.EQ.1 ) THEN
-            modfile = 'models/CALS3k.3MAST'
-            modname = 'mC3'
+      IF ( flag.EQ.0 ) THEN
+            modfile = 'models/CALS10k.2MAST'
+            print *, modfile
+            modname = 'mC2'
+      ELSEIF ( flag.EQ.1 ) THEN
+            modfile = 'models/CALS3k.4MAST'
+            modname = 'mC4'
       ELSEIF ( flag.EQ.2 ) THEN
             modfile = 'models/ARCH3k.1MAST'
             modname = 'mA1'
@@ -172,12 +178,17 @@ PROGRAM SHTOSTT
       OPEN (7,FILE=modfile)
       OPEN (11,FILE='cfield/'//outfile)
       open (12, file='sh/'//outmodel)
-      
-      READ (7,*) tstartin , tendin
-      READ (7,*) lm , nm , nspl , (tknts(i),i=1,nspl+4)
-      write (12, '(i2, i2, i6, a)', advance='no') lm , nm, tcount, NEW_LINE('')
 
-      READ (7,*) gt
+      tknts(:) = 0.0
+      spl(:) = 0.0
+
+      READ (7,*) tstartin , tendin
+!      write (*, *) tstartin, tendin
+      read (7, *) lm, nm, nspl, (tknts(i), i=1,nspl+4)
+!      write (*, *) tknts
+      write (12, '(i2, i2, i6, a)', advance='no') lm , nm, nspl, NEW_LINE('')
+!      write (*, '(i2, i2, i6)') lm , nm, nspl
+      READ (7,*) (gt(:, i), i=1,nspl)
       
       CLOSE (7)
       
@@ -202,9 +213,8 @@ PROGRAM SHTOSTT
       
       
       do i = it1, it2, itinc
-            write (12, '(S, f19.13)', advance='no') DFLOAT(i)
+            write (12, '(S, f19.13, a)', advance='no') DFLOAT(i), NEW_LINE('')
       enddo
-      write (12, '(/)')
 
       do i = it1, it2, itinc
             time = DFLOAT(i)
@@ -213,8 +223,8 @@ PROGRAM SHTOSTT
 
 !-----
 !     calculate main field coefficients at time time
-            CALL INTERV(tknts,time,nspl,nleft)
-            CALL BSPLINE(tknts,time,nspl,jord,nleft,spl(nleft-3))
+            CALL INTERV(tknts(1:nspl+4),time,nspl,nleft)
+            CALL BSPLINE(tknts(1:nspl+4),time,nspl,jord,nleft,spl(nleft-3))
       
             DO k = 1 , N
             g(k) = 0.0
@@ -603,12 +613,35 @@ PROGRAM SHTOSTT
       
       END
       
+!____________________________________________________
+
+      ! subroutine readModfile(N, nspl)
+      ! implicit none
+
+      !       real*8 :: gt, spl, tknts
+      !       integer :: lm, nm, i
+      !       integer, intent(in) :: N, nspl
+
+      !       dimension :: gt(N, NSPL)
+      !       dimension :: spl(NSPL), tknts(NSPL+4)
+
+            
+      !       READ (7, '(S, f6.0)', advance='no') (tknts(i),i=1,nspl+4)
+      ! !      write (*, *) lm, nm, nspl, (tknts(i),i=1,nspl+4)
+      !       write (12, '(i2, i2, i6, a)', advance='no') lm , nm, nspl, NEW_LINE('')
+
+      !       READ (7,*) gt
+      
+      ! end
+
 
 !____________________________________________________
       subroutine serialToVerbose(g)
             implicit NONE
 
             !     Reformats serial list of gauss coefficients
+            !     Call when it is time to read in the coefficients,
+            !     After nspl has been assigned
             
             integer :: lmax, n, i, l, m
             real*8 :: g
@@ -617,7 +650,7 @@ PROGRAM SHTOSTT
             PARAMETER (N=LMAX*(LMAX+2))
 
             Dimension :: g(n)
-
+            write (12, '(i2, i10, S, f26.13, f26.13, a)', advance='no') 0, 0, 0.0, 0.0, NEW_LINE('')
             i=1
             do l=1, lmax
                   do m=0, l
