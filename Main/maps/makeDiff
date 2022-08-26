@@ -1,0 +1,366 @@
+#!/bin/zsh
+
+######################################################################
+#							File Setup								 #
+######################################################################
+
+# Global variables
+rc=0.547
+rs=1.000
+
+
+### OPTIONS for first field
+# final outfile name
+outdiff=pdf/test
+outdiffgrid=nc/test
+# Degree increment (##) (only necessary for recovered SH models)
+d=d02
+# Epoch
+y=1990
+# Model
+#	0 for CALS10k.2
+#	1 for CALS3k.4
+#	2 for ARCH3k.1
+#	3 for SED3k.1
+mnum=1
+# Input type (number of header lines):
+#	0 for SH from STT
+#	1 for Pure SH
+iT=1
+
+### Options for both fields
+# Radius
+r1=$rc
+# Model type for dwnwdCnt
+# 0 for Psi (doesn't work yet, Needs to be coupled with grdgradient to find bphi, btheta)
+# 1 for Br
+mtype=1
+#always the same (3) when ignoring monopole
+headers=3
+###
+
+######################################################################
+#							Begin Script							 #
+######################################################################
+
+### MODS BASED ON THE OPTIONS 
+### 1st Field
+if ((iT==0)); then STT='STT'; fi
+if ((y < 0)); then y=n${y:1:4}; epoch="${y:1:4} BCE"
+	else; y=p$y; epoch="${y:1:4} CE"
+	fi
+if ((mtype==1)); then mt='_br'; mtname='Br'
+elif ((mtype==0)); then mt='_psi'; mtname='@[\Psi @['
+fi
+if ((mnum==0)); then m=mC2 mname='CALS10k.2'	
+	elif ((mnum==1)); then m=mC4; mname="CALS3k.4"
+	elif ((mnum==2)); then m=mA1; mname='ARCH3k.1'
+	elif ((mnum==3)); then m=mS1; mname='SED3k.1'
+	else; echo 'Invalid model choice'; exit
+fi
+###
+
+if (( iT==0 ));
+then
+	shfile='SHR'$m$d$y
+	shout='R'$m$d$y$mt
+	shloc='../shOut/'
+	outfile='pdf/'${shout}
+	outgrid='nc/'$shout
+	echo 'Input type: SH recovered from STT'
+elif (( iT==1 ));
+then
+	shfile='SH'$m$y
+	shout=$m$y$mt
+	shloc='../sh/'
+	outfile='pdf/'${shout}
+	outgrid='nc/'$shout
+	echo 'Input type: original SH model'
+else
+	echo 'Error finding input file'
+	exit
+fi
+
+echo 'outfile will be called ' ${outdiff}.pdf
+
+# Program
+
+echo 'Running dwnwdCnt.f95 for r=' $r1 ' m'
+# Downward continue model to r1
+#Model name
+#outname
+#radius
+#mType
+./dwnwdCnt << !
+$shloc$shfile
+$outfile.tmp
+$r1
+$mtype
+!
+
+######################################################################
+#							Begin GMT program						 #
+######################################################################
+
+gmt set PS_PAGE_ORIENTATION portrait FONT_ANNOT_PRIMARY 6  FONT_ANNOT_SECONDARY 3  FONT_TITLE 10 FONT_LABEL 6 MAP_LABEL_OFFSET 0.2c  MAP_ANNOT_OFFSET_PRIMARY 0.1c MAP_ANNOT_OFFSET_SECONDARY 0.1c PS_MEDIA letter MAP_TICK_LENGTH 0.1 PS_LINE_CAP round FORMAT_FLOAT_OUT %lg FORMAT_GEO_MAP ddd.mm MAP_FRAME_TYPE plain PS_LINE_JOIN bevel MAP_FRAME_PEN thin MAP_GRID_PEN thinnest,white
+gmt set PROJ_ELLIPSOID sphere
+
+### preliminaries
+rgn=-R-180/180/-85/85
+rgn=-Rg
+proj=-JH0/10c
+
+
+### Color palette
+echo 'making color palette'
+#surface
+#gmt makecpt -CPO.cpt -T-68.75/68.75/12.5 -Z -Vq > magCP.cpt
+#core
+gmt makecpt -CPO.cpt -T-600/600/100 -Vq > magCP.cpt
+
+
+### Basemap
+gmt psbasemap $rgn $proj -Bx -By -BsWNe -Y20 -K > $outdiff.ps
+
+### Evaluate SH
+echo 'converting sh to grid'
+# Chop the header and evaluate spherical harmonics
+# Resolution must be high enough for smooth contours
+
+#awk "(NR>$headers)" $outfile.tmp | awk '{print $1, $2, $4, $4}' > whatreadCore.txt
+awk "(NR>$headers)" $outfile.tmp | awk '{print $1, $2, $3, $4}' | \
+	gmt sph2grd -G${outgrid}.nc $rgn -I0.1 -Ns -Vq
+	
+# rescale
+echo 'Rescaling sh grid'
+gmt grdmath ${outgrid}.nc 1000 DIV = ${outgrid}.nc
+
+# grd2cpt
+#gmt grd2cpt ${outgrid}.nc -CPO.cpt -Z > magCoreCP.cpt
+
+#plot
+echo 'plotting sh grid'
+gmt grdimage ${outgrid}.nc -CmagCP.cpt $rgn $proj -O -K >> ${outdiff}.ps
+gmt grdcontour ${outgrid}.nc $proj -C500 -W0.5,white -O -K >> $outdiff.ps
+
+# Overlay another basemap
+gmt psbasemap $rgn $proj -BNWse -O -K >> $outdiff.ps
+
+# coastlines
+echo 'plotting coastlines'
+gmt pscoast $rgn $proj -W1/0.3,black -Dc  -O -K >> $outdiff.ps
+
+# Colorbar
+echo 'making colorbar'
+gmt psscale $rgn $proj -DJRM+w4/.2+v+ml -Bxa500 -By+l"@[\mu T@[" \
+	-G-600/600 -CmagCP.cpt  -O -K >> $outdiff.ps
+
+# Annotations
+echo 'annotating'
+gmt pstext $rgn $proj -F+jLT+f10,0,black+cTL -N -O -K << EOF >> $outdiff.ps
+$mname $STT
+EOF
+
+gmt pstext $rgn $proj -F+jRT+f10,0,black+cTR -N -O -K << EOF >> $outdiff.ps
+r = 0.547
+EOF
+
+gmt pstext $rgn $proj -F+jLB+f10,0,black+cLB -N -O -K << EOF >> $outdiff.ps
+$mtname
+EOF
+
+gmt pstext $rgn $proj -F+jRB+f10,0,black+cBR -N -O -K << EOF >> $outdiff.ps
+$epoch
+EOF
+
+
+######################################################################
+#							Second field						 #
+######################################################################
+
+### OPTIONS for second field
+# Degree increment (##) (only necessary for recovered SH models)
+d2=d02
+# Epoch
+y2=1990
+# Model
+#	0 for CALS10k.2
+#	1 for CALS3k.4
+#	2 for ARCH3k.1
+#	3 for SED3k.1
+mnum2=1
+# Input type (number of header lines):
+#	0 for SH from STT
+#	1 for Pure SH
+iT2=0
+
+### MODS BASED ON THE OPTIONS 
+### 1st Field
+if ((iT2==0)); then STT2='STT'; 
+	else; STT2=''; fi
+if ((y2 < 0)); then y2=n${y:1:4}; epoch2="${y:1:4} BCE"
+	else; y2=p$y2; epoch2="${y2:1:4} CE"
+	fi
+if ((mtype==1)); then mt2='_br'; mtname2='Br'
+elif ((mtype==0)); then mt2='_psi'; mtname2='@[\Psi @['
+fi
+if ((mnum2==0)); then m2=mC2 mname2='CALS10k.2'	
+	elif ((mnum2==1)); then m2=mC4; mname2="CALS3k.4"
+	elif ((mnum2==2)); then m2=mA1; mname2='ARCH3k.1'
+	elif ((mnum2==3)); then m2=mS1; mname2='SED3k.1'
+	else; echo 'Invalid model choice'; exit
+fi
+###
+
+if (( iT2==0 ));
+then
+	shfile2='SHR'$m2$d2$y2
+	shout2='R'$m2$d2$y2$mt2
+	shloc2='../shOut/'
+	# outfile should stay the same
+	outfile2='pdf/'$shout2
+	outgrid2='nc/'$shout2
+	echo 'Input type: SH recovered from STT'
+elif (( iT==1 ));
+then
+	shfile2='SH'$m2$y2
+	shout2=$m2$y2$mt2
+	shloc2='../sh/'
+	# outfile should stay the same
+	outfile2='pdf/'$shout2
+	outgrid2='nc/'$shout2
+	echo 'Input type: original SH model'
+else
+	echo 'Error finding input file'
+	exit
+fi
+
+# Program
+
+echo 'Running dwnwdCnt.f95 for r=' $r1 ' m'
+# Downward continue model to r1
+#Model name
+#outname
+#radius
+#mType
+./dwnwdCnt << !
+$shloc2$shfile2
+${outfile2}.tmp
+$r1
+$mtype
+!
+
+### Basemap
+gmt psbasemap $rgn $proj -Bx -By -BsWNe -Y-6.2c -K -O >> $outdiff.ps
+
+### Evaluate SH
+echo 'converting sh to grid'
+# Chop the header and evaluate spherical harmonics
+# Resolution must be high enough for smooth contours
+
+#awk "(NR>$headers)" ${outfile}.tmp2 | awk '{print $1, $2, $4, $4}' > whatreadCore.txt
+awk "(NR>$headers)" ${outfile2}.tmp | awk '{print $1, $2, $3, $4}' | \
+	gmt sph2grd -G${outgrid2}.nc $rgn -I0.1 -Ns -Vq
+	
+# rescale
+echo 'Rescaling sh grid'
+gmt grdmath ${outgrid2}.nc 1000 DIV = ${outgrid2}.nc
+
+# grd2cpt
+#gmt grd2cpt ${outgrid2}.nc -CPO.cpt -Z > magCoreCP.cpt
+
+#plot
+echo 'plotting sh grid'
+gmt grdimage ${outgrid2}.nc -CmagCP.cpt $rgn $proj -O -K >> ${outdiff}.ps
+gmt grdcontour ${outgrid2}.nc $proj -C500 -W0.5,white -O -K >> $outdiff.ps
+
+# Overlay another basemap
+gmt psbasemap $rgn $proj -BNWse -O -K >> $outdiff.ps
+
+# coastlines
+echo 'plotting coastlines'
+gmt pscoast $rgn $proj -W1/0.3,black -Dc  -O -K >> $outdiff.ps
+
+# Colorbar
+echo 'making colorbar'
+gmt psscale $rgn $proj -DJRM+w4/.2+v+ml -Bxa500 -By+l"@[\mu T@[" \
+	-G-600/600 -CmagCP.cpt  -O -K >> $outdiff.ps
+
+# Annotations
+echo 'annotating'
+gmt pstext $rgn $proj -F+jLT+f10,0,black+cTL -N -O -K << EOF >> $outdiff.ps
+$mname2 $STT2
+EOF
+
+gmt pstext $rgn $proj -F+jRT+f10,0,black+cTR -N -O -K << EOF >> $outdiff.ps
+r = 0.547
+EOF
+
+gmt pstext $rgn $proj -F+jLB+f10,0,black+cLB -N -O -K << EOF >> $outdiff.ps
+$mtname2
+EOF
+
+gmt pstext $rgn $proj -F+jRB+f10,0,black+cBR -N -O -K << EOF >> $outdiff.ps
+$epoch2
+EOF
+
+
+######################################################################
+#							Difference						 #
+######################################################################
+
+
+### Basemap
+gmt psbasemap $rgn $proj -Bx -By -BsWNe -Y-6.2c -O -K >> $outdiff.ps
+
+gmt makecpt -CPO.cpt -T-60/60/10 -Vq > magCP.cpt
+
+# subtract
+echo 'taking difference'
+gmt grdmath ${outgrid}.nc ${outgrid2}.nc SUB = $outdiffgrid.nc
+
+#plot
+echo 'plotting sh grid'
+gmt grdimage $outdiffgrid.nc -CmagCP.cpt $rgn $proj -O -K >> ${outdiff}.ps
+gmt grdcontour $outdiffgrid.nc $proj -C50 -W0.5,white -O -K >> $outdiff.ps
+
+# Overlay another basemap
+gmt psbasemap $rgn $proj -BNWse -O -K >> $outdiff.ps
+
+# coastlines
+echo 'plotting coastlines'
+gmt pscoast $rgn $proj -W1/0.3,black -Dc  -O -K >> $outdiff.ps
+
+# Annotations
+echo 'annotating'
+gmt pstext $rgn $proj -F+jLT+f10,0,black+cTL -N -O -K << EOF >> $outdiff.ps
+| $mname $STT - ${mname2:4} $STT2 |
+EOF
+
+gmt pstext $rgn $proj -F+jRT+f10,0,black+cTR -N -O -K << EOF >> $outdiff.ps
+r = 0.547
+EOF
+
+gmt pstext $rgn $proj -F+jLB+f10,0,black+cLB -N -O -K << EOF >> $outdiff.ps
+$mtname
+EOF
+
+gmt pstext $rgn $proj -F+jRB+f10,0,black+cBR -N -O -K << EOF >> $outdiff.ps
+$epoch
+EOF
+
+# Colorbar
+echo 'making colorbar'
+gmt psscale $rgn $proj -DJRM+w4/.2+v+ml -Bxa50 -By+l"@[\mu T@[" \
+	-G-60/60 -CmagCP.cpt  -O >> $outdiff.ps
+
+
+### finalize
+echo 'Converting postscript'
+gmt psconvert -Tf -Qt -Qg -Vq $outdiff.ps
+
+rm $outdiff.ps magCP.cpt pdf/*.tmp
+
+open $outdiff.pdf
+
+#exit
