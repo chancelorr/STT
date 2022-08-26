@@ -18,7 +18,7 @@ CALS10k.2, CALS3k.4, ARCH3k.1, SED3k.1
 SPHERICAL HARMONICS FORMAT:
     lmax, nmax, number of epochs
     epoch(s)
-    l, m, glm, hlm (including monopole)
+    l, m, glm, hlm (including monopole because it is sometimes nonzero for STT models)
 
 F95 CODES:
 
