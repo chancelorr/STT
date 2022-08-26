@@ -52,13 +52,19 @@ program dwnwdCont
 
     pref=a
 !   read monopole
+!   includes a factor of sqrt(k(2l+1)) to account GMT's normalization issue
     do ll=0, lmax
         if (flag.eq.1) pref=(ll+1)/r
-        do mm=0, ll
+        read (10, *) l, m, g, h
+            write (20,'(i2, i10, S, f30.13, f30.13, a)', advance='no') &
+                l, m, pref*((1/r)**(l+1))*g/sqrt(float((4*l+2))), &
+                pref*((1/r)**(l+1))*h/sqrt(float((4*l+2))), NEW_LINE('')
+        do mm=1, ll
             read (10, *) l, m, g, h
 !            print *, 'l, ', l, 'll, ', ll
             write (20,'(i2, i10, S, f30.13, f30.13, a)', advance='no') &
-                l, m, pref*((1/r)**(l+1))*g, pref*((1/r)**(l+1))*h, NEW_LINE('')
+                l, m, pref*((1/r)**(l+1))*g/sqrt(float((4*l+2))), &
+                pref*((1/r)**(l+1))*h/sqrt(float((4*l+2))), NEW_LINE('')
         ENDDO
     enddo
 
