@@ -35,7 +35,7 @@ shtostt evaluates the field from an sh model
         whether to read one or many snapshots
             Snapshot time or time increment
     output file: lat long, br, flag, epoch
-            header: region // radius
+        header: region // radius
             stored in cfield/
         snapshot: m(model)d(degrees)p/n(time)
             here p/n denotes positive or negative time
