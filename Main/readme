@@ -51,6 +51,6 @@ stt2sh recovers an sh model from the stt
     output file: stored in shOut/ using specified format
         snapshot: SHR m(model)d(degrees)p/n(time)
 
-dwnwdCnt downward continues a spherical harmonic file
+dwnwdCnt downward continues a spherical harmonic file AND corrects for GMT's normalization bug (treats 4pi & schmidt norm similarly)
     input: sh model at surface (1.00), output file, output radius (as a fraction of surface radius), model type (Br or Psi)
     output: temporary SH model (.tmp) using specified sh format
