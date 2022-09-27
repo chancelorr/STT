@@ -13,7 +13,10 @@ execute makeMap (in maps) to create a gmt map after specifying options at the to
 
 MODELS SUPPORTED:
 
-CALS10k.2, CALS3k.4, ARCH3k.1, SED3k.1
+C2 - CALS10k.2
+C4 - CALS3k.4
+A1 - ARCH3k.1
+S1 - SED3k.1
 
 SPHERICAL HARMONICS FORMAT:
     lmax, nmax, number of epochs
@@ -54,3 +57,5 @@ stt2sh recovers an sh model from the stt
 dwnwdCnt downward continues a spherical harmonic file AND corrects for GMT's normalization bug (treats 4pi & schmidt norm similarly)
     input: sh model at surface (1.00), output file, output radius (as a fraction of surface radius), model type (Br or Psi)
     output: temporary SH model (.tmp) using specified sh format
+
+!!!! Surface maps need to be normalized in dwnwdcnt too !!!

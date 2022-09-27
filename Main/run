@@ -1,8 +1,8 @@
 #!/bin/zsh
 
-### switches
-#	0 off
-#	1 on
+### program switches
+#	0 off/dont run
+#	1 on/run
 ioZ=0
 ioSH=1
 ioSTT=1
@@ -16,8 +16,8 @@ deg=02
 #	1 C4 - CALS3k.4
 #	2 A1 - ARCH3k.1
 #	3 S1 - SED3k.1
-model=1
-### output type
+model=0
+### output type (snapshot recommended)
 #	1 for snapshot
 #	2 for incremented epochs
 outType=1

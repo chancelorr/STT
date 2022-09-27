@@ -23,7 +23,7 @@ mnum=1
 # Input type (number of header lines):
 #	0 for SH from STT
 #	1 for Pure SH
-iT=0
+iT=1
 # Radius
 r1=$rc
 # Model type for dwnwdCnt

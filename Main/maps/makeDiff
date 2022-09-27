@@ -30,7 +30,7 @@ iT=1
 
 ### Options for both fields
 # Radius
-r1=$rc
+r1=$rs
 # Model type for dwnwdCnt
 # 0 for Psi (doesn't work yet, Needs to be coupled with grdgradient to find bphi, btheta)
 # 1 for Br
